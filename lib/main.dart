@@ -1,28 +1,24 @@
 import 'package:flutter/material.dart';
+import 'Gerant/routes/app_routes.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Remove debug banner
-      home: Scaffold(
-        backgroundColor: Colors.grey[900], // Dark grey background
-        body: Container(
-          width: double.infinity,
-          height: double.infinity,
-          child: Opacity(
-            opacity: 0.1, // 10% opacity
-            child: Image.asset(
-              'assets/images/group55.png', // Your PNG with transparent BG
-              fit: BoxFit.cover, // Full screen cover
-            ),
-          ),
-        ),
+      debugShowCheckedModeBanner: false,
+      title: 'Auth App',
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
       ),
+      initialRoute: AppRoutes.signIn,
+      routes: AppRoutes.routes,
     );
   }
 }
