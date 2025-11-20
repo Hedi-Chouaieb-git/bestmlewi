@@ -108,7 +108,7 @@ class _CartScreenState extends State<CartScreen> {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1B1919),
+                    color: const Color(0xFF424242),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Row(
@@ -158,7 +158,7 @@ class _CartScreenState extends State<CartScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B1919),
+                          color: const Color(0xFF424242),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -320,7 +320,7 @@ class _CartScreenState extends State<CartScreen> {
                       // Handle order
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B1919),
+                      backgroundColor: const Color(0xFF424242),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -343,43 +343,17 @@ class _CartScreenState extends State<CartScreen> {
               Container(
                 height: 80,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1B1919),
+                  color: Color(0xFF2B2B2B),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     // Logo
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.restaurant_menu,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'BESTMLAWIA',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    Image.asset(
+                      'assets/images/logo.png',
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.contain,
                     ),
 
                     // Cart Button
