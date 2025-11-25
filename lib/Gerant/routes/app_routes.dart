@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/Gerant/pages/AffecterRole.dart';
-import 'package:supabase_app/Gerant/pages/Dashboard.dart';
 import 'package:supabase_app/Gerant/pages/sales%20point.dart';
 import '../pages/Commande.dart';
 import '../pages/collaborateur.dart';
 import '../pages/order.dart';
-import '../pages/auth/signin_page.dart';
-import '../pages/auth/signup_page.dart';
 import '../pages/cart.dart';
 import '../pages/menu.dart';
 import '../pages/traking.dart';
@@ -38,15 +35,12 @@ class AppRoutes {
 
 
   static Map<String, WidgetBuilder> routes = {
-    signIn: (context) => const SignInScreen(),
-    signUp: (context) => const SignUpScreen(),
     cart: (context) => const CartScreen(),
     menu: (context) => const MainProductsPage(),
     order: (context) => const OrderDetailsPage(),
     traking: (context) => const OrderTrackingPage(),
     commande: (context) => const Command(),
     collab: (context) => CollaborateursPage(),
-    dashboard: (context) => DashboardPage(),
     salespoint: (context) => PointDeVentePage(),
     cuisine: (context) => EquipeCuisinePage(),
     role: (context) => AffecterRolePage(),
