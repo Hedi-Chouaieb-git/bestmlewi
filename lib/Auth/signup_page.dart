@@ -10,86 +10,45 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  // Méthode pour générer un code client unique
-  String _generateClientCode(String name, String phone) {
-    final namePart = name.length >= 3 ? name.substring(0, 3).toUpperCase() : name.toUpperCase();
-    final phonePart = phone.length >= 4 ? phone.substring(phone.length - 4) : phone;
-    final random = DateTime.now().millisecondsSinceEpoch.toString().substring(9);
-    return 'CL${namePart}$phonePart$random';
-  }
-
-  // Méthode pour vérifier si le numéro de téléphone existe déjà
-  Future<bool> _isPhoneNumberExists(String phone) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('Client')
-          .select()
-          .eq('phone', phone);
-
-      return response.isNotEmpty;
-    } catch (e) {
-      print('Erreur vérification téléphone: $e');
-      return false;
-    }
-  }
-
-  // Méthode d'inscription
-  Future<void> _onInscrir() async {
-    if (_isLoading) return;
-
-    final String name = _nameController.text.trim();
-    final String email = _emailController.text.trim();
-    final String password = _passwordController.text.trim();
-    final String confirmPassword = _confirmPasswordController.text.trim();
-    final String phone = _phoneController.text.trim();
-    final String address = _addressController.text.trim();
-
-    // Génération automatique du code client
-    final String code = _generateClientCode(name, phone);
-
-    // Validation des champs
-    if (name.isEmpty || email.isEmpty || password.isEmpty ||
-        confirmPassword.isEmpty || phone.isEmpty || address.isEmpty) {
-      _showSnackBar('Veuillez remplir tous les champs');
+  Future<void> _signUp() async {
+    // Required fields validation
+    if (_nameController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showSnackBar('Name, phone and password are required');
       return;
     }
 
-    // Validation email
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-      _showSnackBar('Veuillez entrer un email valide');
+    // Password confirmation validation
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar('Passwords do not match');
       return;
     }
 
-    // Validation mot de passe
-    if (password.length < 6) {
-      _showSnackBar('Le mot de passe doit contenir au moins 6 caractères');
-      return;
-    }
-
-    // Validation confirmation mot de passe
-    if (password != confirmPassword) {
-      _showSnackBar('Les mots de passe ne correspondent pas');
+    // Password length validation
+    if (_passwordController.text.length < 6) {
+      _showSnackBar('Password must be at least 6 characters long');
       return;
     }
 
@@ -98,100 +57,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      // Vérifier si le numéro de téléphone existe déjà
-      final bool phoneExists = await _isPhoneNumberExists(phone);
-      if (phoneExists) {
-        _showSnackBar('Ce numéro de téléphone est déjà utilisé');
+      // Check if phone number already exists
+      final existingClient = await _supabase
+          .from('Client')
+          .select()
+          .eq('phone', _phoneController.text.trim())
+          .maybeSingle();
+
+      if (existingClient != null) {
+        _showSnackBar('A client with this phone number already exists');
         return;
       }
 
-      // 1. Inscription dans l'authentification Supabase
-      final AuthResponse authResponse = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'name': name,
-          'phone': phone,
-          'client_code': code,
-        },
-      );
+      // Direct registration in Client table
+      final response = await _supabase
+          .from('Client')
+          .insert({
+        'name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        'password': _passwordController.text.trim(), // Store password
+        'createdAt': DateTime.now().toIso8601String(),
+      })
+          .select();
 
-      final User? user = authResponse.user;
+      if (response.isNotEmpty) {
+        _showSnackBar('Client account created successfully!');
 
-      if (user != null) {
-        // 2. Enregistrement dans la table client
-        await _createClientInDatabase(
-          userId: user.id,
-          name: name,
-          email: email,
-          phone: phone,
-          address: address,
-          code: code,
-        );
-
-        _showSnackBar('Inscription réussie! Votre code client: $code');
-
-        // Redirection vers l'écran d'accueil
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-      } else {
-        _showSnackBar('Erreur lors de la création du compte');
+        // Navigate to login page
+        Navigator.pushReplacementNamed(context, '/menu');
       }
-    } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('already registered')) {
-        _showSnackBar('Cet email est déjà utilisé');
-      } else {
-        _showSnackBar('Erreur d\'authentification: ${e.message}');
-      }
-    } on PostgrestException catch (e) {
-      if (e.code == '23505') {
-        _showSnackBar('Ce numéro de téléphone est déjà utilisé');
-      } else if (e.code == '42501') {
-        _showSnackBar('Erreur RLS - Vérifiez les politiques de sécurité');
-      } else {
-        _showSnackBar('Erreur base de données: ${e.message}');
-      }
+
     } catch (e) {
-      _showSnackBar('Erreur inattendue: $e');
+      _showSnackBar('Error creating account: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
-  }
-
-  Future<void> _createClientInDatabase({
-    required String userId,
-    required String name,
-    required String email,
-    required String phone,
-    required String address,
-    required String code,
-  }) async {
-    await Supabase.instance.client.from('Client').insert({
-
-      'name': name,
-      'phone': phone,
-      'address': address,
-      'code': code,
-      'createdAt': DateTime.now().toIso8601String(),
-    });
   }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: message.toLowerCase().contains('erreur') ||
-            message.toLowerCase().contains('déjà') ||
-            message.toLowerCase().contains('correspondent') ||
-            message.toLowerCase().contains('utilisé')
-            ? Colors.red
-            : Colors.green,
-        behavior: SnackBarBehavior.floating,
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: message.contains('successfully') ? Colors.green : Colors.red,
         duration: Duration(seconds: 4),
       ),
     );
@@ -202,7 +115,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image Layer
+          // Background
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -214,7 +127,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
 
-          // Grey Overlay with Food Pattern
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -236,11 +148,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 40),
 
                     // Sign Up Title
                     const Text(
-                      'Sign Up',
+                      'Client Registration',
                       style: TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.bold,
@@ -252,7 +164,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                     // Welcome Text
                     const Text(
-                      'Welcome',
+                      'Create Your Account',
                       style: TextStyle(
                         fontSize: 28,
                         color: Colors.white,
@@ -260,200 +172,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 40),
 
-                    // Name Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _nameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Full Name',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Name
+                    _buildTextField(_nameController, 'Full Name*', Icons.person),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Email Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _emailController,
-                        style: const TextStyle(color: Colors.white),
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Email',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Phone
+                    _buildTextField(_phoneController, 'Phone Number*', Icons.phone, TextInputType.phone),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Password Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Color(0xFF7C7C8D),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Address
+                    _buildTextField(_addressController, 'Address', Icons.location_on, TextInputType.streetAddress),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Confirm Password Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscureConfirmPassword,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Confirm Password',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _obscureConfirmPassword = !_obscureConfirmPassword;
-                              });
-                            },
-                            icon: Icon(
-                              _obscureConfirmPassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                              color: Color(0xFF7C7C8D),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Password
+                    _buildPasswordField(_passwordController, 'Password*', _obscurePassword, () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    }),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Phone Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _phoneController,
-                        style: const TextStyle(color: Colors.white),
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          hintText: 'Phone Number',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Confirm Password
+                    _buildPasswordField(_confirmPasswordController, 'Confirm Password*', _obscureConfirmPassword, () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    }),
 
-                    const SizedBox(height: 20),
-
-                    // Address Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _addressController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Address',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 40),
 
                     // Sign Up Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _onInscrir,
+                        onPressed: _isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B35),
                           shape: RoundedRectangleBorder(
@@ -463,8 +222,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
                           width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -483,15 +242,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                     const SizedBox(height: 24),
 
-                    // I Have an Account
+                    // Already Have an Account
                     GestureDetector(
                       onTap: _isLoading
                           ? null
                           : () {
-                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(context, '/signin');
                       },
                       child: Text(
-                        'I Have an Account',
+                        "I already have an account",
                         style: TextStyle(
                           color: _isLoading ? Colors.grey : Colors.white,
                           fontSize: 16,
@@ -507,6 +266,67 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hintText, IconData icon, [TextInputType keyboardType = TextInputType.text]) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(
+            color: Color(0xFF7C7C8D),
+            fontSize: 16,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
+          prefixIcon: Icon(icon, color: const Color(0xFF7C7C8D)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField(TextEditingController controller, String hintText, bool obscureText, VoidCallback onToggle) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(
+            color: Color(0xFF7C7C8D),
+            fontSize: 16,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
+          prefixIcon: Icon(Icons.lock, color: const Color(0xFF7C7C8D)),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscureText ? Icons.visibility : Icons.visibility_off,
+              color: const Color(0xFF7C7C8D),
+            ),
+            onPressed: onToggle,
+          ),
+        ),
       ),
     );
   }

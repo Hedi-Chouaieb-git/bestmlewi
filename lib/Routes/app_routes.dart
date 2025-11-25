@@ -9,17 +9,24 @@ import '../Gerant/pages/menu.dart';
 
 
 
-
-class ApRoutes {
+class AppRoutes {
   static const String signIn = '/signin';
   static const String signUp = '/signup';
+
+
   static const String menu = '/menu';
+
+
+
+
 
 
   static Map<String, WidgetBuilder> routes = {
     signIn: (context) => const SignInScreen(),
     signUp: (context) => const SignUpScreen(),
+
     menu: (context) => const MainProductsPage(),
+
 
   };
 }
