@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Product Model
 class Product {
@@ -17,9 +18,21 @@ class Product {
     required this.price,
     required this.category,
   });
+
+  // Factory constructor to create Product from Supabase JSON
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'].toString(),
+      name: json['name'] ?? 'Unknown',
+      image: json['image'] ?? 'assets/images/mlawi.jpeg',
+      description: (json['description'] as String?)?.split(',') ?? ['No description'],
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      category: json['category'] ?? 'mlawi',
+    );
+  }
 }
 
-// Main Products Page
+// Main Products Page with Supabase
 class MainProductsPage extends StatefulWidget {
   const MainProductsPage({Key? key}) : super(key: key);
 
@@ -32,48 +45,43 @@ class _MainProductsPageState extends State<MainProductsPage> {
   String selectedCategory = 'mlawi';
   String searchQuery = '';
 
-  // Sample products data
-  final List<Product> allProducts = [
-    Product(
-      id: '1',
-      name: 'Shawarma Wrap',
-      image: 'assets/images/shwarma.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 250.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '2',
-      name: 'Crepe',
-      image: 'assets/images/mlawi.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 180.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '3',
-      name: 'Fresh Juice',
-      image: 'assets/image/jus.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 120.0,
-      category: 'jus',
-    ),
-  ];
+  List<Product> allProducts = [];
+  bool loading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();
+  }
+
+  Future<void> fetchProducts() async {
+    try {
+      final client = Supabase.instance.client;
+
+      // Fetch all products from Supabase
+      final response = await client
+          .from('products')
+          .select()
+          .order('created_at', ascending: false);
+
+      // Convert response to Product list
+      final products = (response as List)
+          .map((p) => Product.fromJson(p as Map<String, dynamic>))
+          .toList();
+
+      setState(() {
+        allProducts = products;
+        loading = false;
+      });
+    } catch (err) {
+      setState(() {
+        error = err.toString();
+        loading = false;
+      });
+      print('Error fetching products: $err');
+    }
+  }
 
   List<Product> get filteredProducts {
     return allProducts.where((product) {
@@ -92,6 +100,22 @@ class _MainProductsPageState extends State<MainProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Scaffold(
+        body: Center(
+          child: Text('Error: $error', style: TextStyle(color: Colors.red)),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -160,7 +184,14 @@ class _MainProductsPageState extends State<MainProductsPage> {
 
               // Products List
               Expanded(
-                child: ListView.builder(
+                child: filteredProducts.isEmpty
+                    ? Center(
+                  child: Text(
+                    'No products found',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                )
+                    : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
@@ -188,9 +219,15 @@ class _MainProductsPageState extends State<MainProductsPage> {
                                 ),
                               ),
                               child: ClipOval(
-                                child: Image.asset(
+                                child: Image.network(
                                   product.image,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/mlawi.jpeg',
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -202,7 +239,15 @@ class _MainProductsPageState extends State<MainProductsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Description bullets
+                                  Text(
+                                    product.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
                                   ...product.description.map((desc) => Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
                                     child: Row(
@@ -222,7 +267,7 @@ class _MainProductsPageState extends State<MainProductsPage> {
                                             desc,
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 14,
+                                              fontSize: 12,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -230,6 +275,15 @@ class _MainProductsPageState extends State<MainProductsPage> {
                                       ],
                                     ),
                                   )).toList(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${product.price.toStringAsFixed(2)} TND',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF6B35),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -250,15 +304,12 @@ class _MainProductsPageState extends State<MainProductsPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Logo
                     Image.asset(
                       'assets/images/logo.png',
                       width: 50,
                       height: 50,
                       fit: BoxFit.contain,
                     ),
-
-                    // Home/Menu Button
                     Container(
                       width: 70,
                       height: 70,
@@ -272,8 +323,6 @@ class _MainProductsPageState extends State<MainProductsPage> {
                         size: 35,
                       ),
                     ),
-
-                    // Cart Button
                     GestureDetector(
                       onTap: () {
                         // Navigate to cart
@@ -284,8 +333,6 @@ class _MainProductsPageState extends State<MainProductsPage> {
                         size: 35,
                       ),
                     ),
-
-                    // Menu Button
                     const Icon(
                       Icons.menu,
                       color: Colors.white,
