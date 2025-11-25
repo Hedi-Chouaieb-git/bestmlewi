@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_app/Gerant/pages/AffecterRole.dart';
+import 'package:supabase_app/Gerant/pages/Dashboard.dart';
+import 'package:supabase_app/Gerant/pages/sales%20point.dart';
+import '../pages/Commande.dart';
+import '../pages/collaborateur.dart' hide CollaborateursPage;
 import '../pages/order.dart';
 import '../pages/auth/signin_page.dart';
 import '../pages/auth/signup_page.dart';
-import '../home/Home.dart';
 import '../pages/cart.dart';
 import '../pages/menu.dart';
 import '../pages/traking.dart';
+import '../pages/equipecuisine.dart';
+import '../pages/AffecterRole.dart';
+import '../../Collaborateur/collaborateursPage.dart';
+
+
+
+
 
 
 class AppRoutes {
@@ -16,6 +27,16 @@ class AppRoutes {
   static const String menu = '/menu';
   static const String order = '/order';
   static const String traking = '/traking';
+  static const String commande = '/commande';
+  static const String dashboard = '/dashboard';
+  static const String salespoint = '/sales_point';
+  static const String cuisine = '/equipe_cuisine';
+  static const String role = '/role';
+
+  static const String Collaborators = '/collaborator';
+
+
+
 
 
   static Map<String, WidgetBuilder> routes = {
@@ -25,5 +46,13 @@ class AppRoutes {
     menu: (context) => const MainProductsPage(),
     order: (context) => const OrderDetailsPage(),
     traking: (context) => const OrderTrackingPage(),
+    commande: (context) => const Command(),
+    dashboard: (context) => DashboardPage(),
+    salespoint: (context) => PointDeVentePage(),
+    cuisine: (context) => EquipeCuisinePage(),
+    role: (context) => AffecterRolePage(),
+    Collaborators: (context) =>CoordinatorDashboard(coordinatorId: '',),
+
+
   };
 }
