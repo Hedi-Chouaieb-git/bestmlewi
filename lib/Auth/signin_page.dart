@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
-import '../../../Auth/signup_page.dart';
-
+import 'package:supabase_app/Auth/signup_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -11,15 +10,74 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = true;
+  bool _isLoading = false;
+
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _signInWithPhoneAndPassword() async {
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showSnackBar('Please fill in all fields');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Search for client by phone and password
+      final response = await _supabase
+          .from('Client')
+          .select()
+          .eq('phone', _phoneController.text.trim())
+          .eq('password', _passwordController.text.trim())
+          .single();
+
+      if (response != null) {
+        // Login successful - navigate to /menu
+        Navigator.pushReplacementNamed(context, '/menu');
+      }
+
+    } on PostgrestException catch (e) {
+      String errorMessage = 'Login error';
+
+      if (e.code == 'PGRST116') {
+        errorMessage = 'Invalid phone number or password';
+      } else {
+        errorMessage = e.message;
+      }
+
+      _showSnackBar(errorMessage);
+    } catch (e) {
+      _showSnackBar('Unexpected error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: message.contains('successful') ? Colors.green : Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -77,7 +135,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     // Welcome Text
                     const Text(
-                      'Welcome',
+                      'Welcome Back',
                       style: TextStyle(
                         fontSize: 28,
                         color: Colors.white,
@@ -87,17 +145,18 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     const SizedBox(height: 60),
 
-                    // Email Input
+                    // Phone Input
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF3D3D5C),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: TextField(
-                        controller: _emailController,
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: 'E-mail',
+                          hintText: 'Phone Number',
                           hintStyle: TextStyle(
                             color: Color(0xFF7C7C8D),
                             fontSize: 16,
@@ -107,6 +166,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             horizontal: 20,
                             vertical: 18,
                           ),
+                          prefixIcon: Icon(Icons.phone, color: Color(0xFF7C7C8D)),
                         ),
                       ),
                     ),
@@ -134,6 +194,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             horizontal: 20,
                             vertical: 18,
                           ),
+                          prefixIcon: Icon(Icons.lock, color: Color(0xFF7C7C8D)),
                         ),
                       ),
                     ),
@@ -182,9 +243,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Handle sign in
-                        },
+                        onPressed: _isLoading ? null : _signInWithPhoneAndPassword,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B35),
                           shape: RoundedRectangleBorder(
@@ -192,7 +251,16 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: _isLoading
+                            ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                            : const Text(
                           'Sign In',
                           style: TextStyle(
                             fontSize: 18,
@@ -207,7 +275,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     // Don't Have an Account
                     GestureDetector(
-                      onTap: () {
+                      onTap: _isLoading
+                          ? null
+                          : () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -215,10 +285,10 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                         );
                       },
-                      child: const Text(
-                        "I Don't Have an Account",
+                      child: Text(
+                        "Don't have an account?",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _isLoading ? Colors.grey : Colors.white,
                           fontSize: 16,
                           decoration: TextDecoration.underline,
                         ),
@@ -228,11 +298,16 @@ class _SignInScreenState extends State<SignInScreen> {
                     const SizedBox(height: 16),
 
                     // Forgot Password
-                    const Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                        color: Color(0xFF7C7C8D),
-                        fontSize: 14,
+                    GestureDetector(
+                      onTap: _isLoading ? null : () {
+                        _showSnackBar('Please contact support to reset your password');
+                      },
+                      child: Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: _isLoading ? Colors.grey : Color(0xFF7C7C8D),
+                          fontSize: 14,
+                        ),
                       ),
                     ),
 
