@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_app/Auth/signup_page.dart';
 
-import '../../../Auth/signup_page.dart';
 
 
 class SignInScreen extends StatefulWidget {

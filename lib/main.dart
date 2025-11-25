@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
-import 'Gerant/routes/app_routes.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'Routes/app_routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialiser Supabase
+  await Supabase.initialize(
+    url: 'https://qxajdhjecopmgvbtbkpu.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4YWpkaGplY29wbWd2YnRia3B1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzMxMTYsImV4cCI6MjA3OTU0OTExNn0.CB06Fr7jcQPAFctPG7chV9yeF6B2GQldgFyqcrdq7Bc',
+  );
+
   runApp(const MyApp());
 }
 
@@ -17,8 +26,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      initialRoute: AppRoutes.signIn,
-      routes: AppRoutes.routes,
+      initialRoute: ApRoutes.signIn,
+      routes: ApRoutes.routes,
+      //navigatorKey: AppRoutes.navigatorKey, // Pour navigation globale
     );
   }
 }
