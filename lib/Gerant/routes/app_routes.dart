@@ -3,7 +3,7 @@ import 'package:supabase_app/Gerant/pages/AffecterRole.dart';
 import 'package:supabase_app/Gerant/pages/Dashboard.dart';
 import 'package:supabase_app/Gerant/pages/sales%20point.dart';
 import '../pages/Commande.dart';
-import '../pages/collaborateur.dart';
+import '../pages/collaborateur.dart' hide CollaborateursPage;
 import '../pages/order.dart';
 import '../pages/auth/signin_page.dart';
 import '../pages/auth/signup_page.dart';
@@ -12,6 +12,7 @@ import '../pages/menu.dart';
 import '../pages/traking.dart';
 import '../pages/equipecuisine.dart';
 import '../pages/AffecterRole.dart';
+import '../../Collaborateur/collaborateursPage.dart';
 
 
 
@@ -27,11 +28,12 @@ class AppRoutes {
   static const String order = '/order';
   static const String traking = '/traking';
   static const String commande = '/commande';
-  static const String collab = '/collab';
   static const String dashboard = '/dashboard';
   static const String salespoint = '/sales_point';
   static const String cuisine = '/equipe_cuisine';
   static const String role = '/role';
+
+  static const String Collaborators = '/collaborator';
 
 
 
@@ -45,11 +47,12 @@ class AppRoutes {
     order: (context) => const OrderDetailsPage(),
     traking: (context) => const OrderTrackingPage(),
     commande: (context) => const Command(),
-    collab: (context) => CollaborateursPage(),
     dashboard: (context) => DashboardPage(),
     salespoint: (context) => PointDeVentePage(),
     cuisine: (context) => EquipeCuisinePage(),
     role: (context) => AffecterRolePage(),
+    Collaborators: (context) =>CoordinatorDashboard(coordinatorId: '',),
+
 
   };
 }
