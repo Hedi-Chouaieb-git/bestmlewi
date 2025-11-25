@@ -1,23 +1,7 @@
 import 'package:flutter/material.dart';
-
-// Product Model
-class Product {
-  final String id;
-  final String name;
-  final String image;
-  final List<String> description;
-  final double price;
-  final String category;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.image,
-    required this.description,
-    required this.price,
-    required this.category,
-  });
-}
+import '../services/product_service.dart';
+import '../models/Product.dart';
+import '../routes/app_routes.dart';
 
 // Main Products Page
 class MainProductsPage extends StatefulWidget {
@@ -28,52 +12,16 @@ class MainProductsPage extends StatefulWidget {
 }
 
 class _MainProductsPageState extends State<MainProductsPage> {
+  final ProductService _productService = ProductService();
   final TextEditingController _searchController = TextEditingController();
+  
+  bool _isLoading = true;
+  String? _errorMessage;
   String selectedCategory = 'mlawi';
   String searchQuery = '';
 
-  // Sample products data
-  final List<Product> allProducts = [
-    Product(
-      id: '1',
-      name: 'Shawarma Wrap',
-      image: 'assets/images/shwarma.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 250.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '2',
-      name: 'Crepe',
-      image: 'assets/images/mlawi.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 180.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '3',
-      name: 'Fresh Juice',
-      image: 'assets/image/jus.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 120.0,
-      category: 'jus',
-    ),
-  ];
+  List<Product> allProducts = [];
+  List<String> categories = ['mlawi', 'jus', 'supplumnet'];
 
   List<Product> get filteredProducts {
     return allProducts.where((product) {
@@ -82,6 +30,44 @@ class _MainProductsPageState extends State<MainProductsPage> {
           product.name.toLowerCase().contains(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     }).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        _productService.fetchProducts(),
+        _productService.fetchCategories(),
+      ]);
+
+      setState(() {
+        allProducts = results[0] as List<Product>;
+        final fetchedCategories = results[1] as List<String>;
+        if (fetchedCategories.isNotEmpty) {
+          categories = fetchedCategories;
+          // Set default category if current one doesn't exist
+          if (!categories.contains(selectedCategory) && categories.isNotEmpty) {
+            selectedCategory = categories.first;
+          }
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Erreur lors du chargement: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -142,17 +128,50 @@ class _MainProductsPageState extends State<MainProductsPage> {
                 ),
               ),
 
+              // Error message
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.red),
+                          onPressed: _loadData,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Category Filter Chips
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  children: [
-                    _buildCategoryChip('mlawi'),
-                    const SizedBox(width: 12),
-                    _buildCategoryChip('jus'),
-                    const SizedBox(width: 12),
-                    _buildCategoryChip('supplumnet'),
-                  ],
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: categories.map((cat) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _buildCategoryChip(cat),
+                    )).toList(),
+                  ),
                 ),
               ),
 
@@ -160,85 +179,156 @@ class _MainProductsPageState extends State<MainProductsPage> {
 
               // Products List
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = filteredProducts[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF424242),
-                          borderRadius: BorderRadius.circular(16),
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF6B35),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Product Image
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFF6B35),
-                                  width: 4,
+                      )
+                    : filteredProducts.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.restaurant_menu,
+                                  size: 64,
+                                  color: Color(0xFF7C7C8D),
                                 ),
-                              ),
-                              child: ClipOval(
-                                child: Image.asset(
-                                  product.image,
-                                  fit: BoxFit.cover,
+                                const SizedBox(height: 16),
+                                Text(
+                                  searchQuery.isEmpty
+                                      ? 'Aucun produit dans cette catégorie'
+                                      : 'Aucun produit trouvé',
+                                  style: const TextStyle(
+                                    color: Color(0xFF7C7C8D),
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-
-                            const SizedBox(width: 16),
-
-                            // Product Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Description bullets
-                                  ...product.description.map((desc) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadData,
+                            color: const Color(0xFFFF6B35),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: filteredProducts.length,
+                              itemBuilder: (context, index) {
+                                final product = filteredProducts[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF424242),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
                                     child: Row(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          '• ',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                                        // Product Image
+                                        Container(
+                                          width: 100,
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFFFF6B35),
+                                              width: 4,
+                                            ),
+                                          ),
+                                          child: ClipOval(
+                                            child: product.image.startsWith('http') || product.image.startsWith('https')
+                                                ? Image.network(
+                                                    product.image,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return Image.asset(
+                                                        'assets/images/logo.png',
+                                                        fit: BoxFit.cover,
+                                                      );
+                                                    },
+                                                  )
+                                                : Image.asset(
+                                                    product.image,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return Image.asset(
+                                                        'assets/images/logo.png',
+                                                        fit: BoxFit.cover,
+                                                      );
+                                                    },
+                                                  ),
                                           ),
                                         ),
+
+                                        const SizedBox(width: 16),
+
+                                        // Product Details
                                         Expanded(
-                                          child: Text(
-                                            desc,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // Product Name
+                                              Text(
+                                                product.name,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              // Price
+                                              Text(
+                                                '${product.price.toStringAsFixed(2)} TND',
+                                                style: const TextStyle(
+                                                  color: Color(0xFFFF6B35),
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              // Description bullets
+                                              if (product.description.isNotEmpty)
+                                                ...product.description.take(3).map((desc) => Padding(
+                                                  padding: const EdgeInsets.only(bottom: 4),
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                    children: [
+                                                      const Text(
+                                                        '• ',
+                                                        style: TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child: Text(
+                                                          desc,
+                                                          style: const TextStyle(
+                                                            color: Colors.white70,
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w400,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                )).toList(),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
-                                  )).toList(),
-                                ],
-                              ),
+                                  ),
+                                );
+                              },
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                          ),
               ),
 
               // Bottom Navigation Bar
@@ -250,15 +340,20 @@ class _MainProductsPageState extends State<MainProductsPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Logo
-                    Image.asset(
-                      'assets/images/logo.png',
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.contain,
+                    // Logo - Navigate to Dashboard
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                      },
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
                     ),
 
-                    // Home/Menu Button
+                    // Home/Menu Button - Stay on menu
                     Container(
                       width: 70,
                       height: 70,
@@ -273,10 +368,10 @@ class _MainProductsPageState extends State<MainProductsPage> {
                       ),
                     ),
 
-                    // Cart Button
+                    // Cart Button - Navigate to cart
                     GestureDetector(
                       onTap: () {
-                        // Navigate to cart
+                        Navigator.pushNamed(context, AppRoutes.cart);
                       },
                       child: const Icon(
                         Icons.shopping_cart,
@@ -285,11 +380,16 @@ class _MainProductsPageState extends State<MainProductsPage> {
                       ),
                     ),
 
-                    // Menu Button
-                    const Icon(
-                      Icons.menu,
-                      color: Colors.white,
-                      size: 35,
+                    // Menu Button - Navigate to Dashboard
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                      },
+                      child: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 35,
+                      ),
                     ),
                   ],
                 ),

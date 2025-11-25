@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_app/Gerant/pages/auth/signup_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../routes/app_routes.dart';
+import '../../services/auth_service.dart';
+import 'signup_page.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -12,7 +15,9 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _authService = AuthService();
   bool _rememberMe = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -21,12 +26,43 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
+  Future<void> _handleSignIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showSnack('Veuillez renseigner vos identifiants');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signIn(email: email, password: password);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+    } on AuthException catch (error) {
+      _showSnack(error.message);
+    } catch (error) {
+      _showSnack('Erreur inattendue: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image Layer
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -37,8 +73,6 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ),
-
-          // Grey Overlay with Food Pattern
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -51,8 +85,6 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ),
-
-          // Content
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -61,8 +93,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 80),
-
-                    // Sign In Title
                     const Text(
                       'Sign In',
                       style: TextStyle(
@@ -71,10 +101,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         color: Color(0xFFFF6B35),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
-                    // Welcome Text
                     const Text(
                       'Welcome',
                       style: TextStyle(
@@ -83,10 +110,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-
                     const SizedBox(height: 60),
-
-                    // Email Input
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF3D3D5C),
@@ -94,6 +118,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       child: TextField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           hintText: 'E-mail',
@@ -109,10 +135,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Password Input
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF3D3D5C),
@@ -121,6 +144,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: TextField(
                         controller: _passwordController,
                         obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _handleSignIn(),
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
                           hintText: 'Password',
@@ -136,10 +161,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Remember Me Checkbox
                     Row(
                       children: [
                         GestureDetector(
@@ -161,6 +183,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                 width: 2,
                               ),
                             ),
+                            child: _rememberMe
+                                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -173,17 +198,12 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 60),
-
-                    // Sign In Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Handle sign in
-                        },
+                        onPressed: _isLoading ? null : _handleSignIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B35),
                           shape: RoundedRectangleBorder(
@@ -191,20 +211,26 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // Don't Have an Account
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -223,10 +249,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Forgot Password
                     const Text(
                       'Forgot password?',
                       style: TextStyle(
@@ -234,7 +257,6 @@ class _SignInScreenState extends State<SignInScreen> {
                         fontSize: 14,
                       ),
                     ),
-
                     const SizedBox(height: 40),
                   ],
                 ),

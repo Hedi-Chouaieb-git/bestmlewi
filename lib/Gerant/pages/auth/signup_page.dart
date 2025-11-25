@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../routes/app_routes.dart';
+import '../../services/auth_service.dart';
 
-// Sign Up Screen with Background Image
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -14,6 +16,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,12 +28,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  Future<void> _handleSignUp() async {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (fullName.isEmpty || email.isEmpty || password.length < 6) {
+      _showSnack('Merci de remplir tous les champs (6 caractères min).');
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signUp(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: phone,
+      );
+      if (!mounted) return;
+      _showSnack('Compte créé. Vérifiez vos mails pour valider.');
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.signIn,
+        (route) => false,
+      );
+    } on AuthException catch (error) {
+      _showSnack(error.message);
+    } catch (error) {
+      _showSnack('Erreur inattendue: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image Layer
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -40,8 +87,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-
-          // Grey Overlay with Food Pattern
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -54,8 +99,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-
-          // Content
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -64,8 +107,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 60),
-
-                    // Sign Up Title
                     const Text(
                       'Sign Up',
                       style: TextStyle(
@@ -74,10 +115,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         color: Color(0xFFFF6B35),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
-                    // Welcome Text
                     const Text(
                       'Welcome',
                       style: TextStyle(
@@ -86,123 +124,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-
                     const SizedBox(height: 50),
-
-                    // Full Name Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _fullNameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Full Name',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
+                    _buildTextField(
+                      controller: _fullNameController,
+                      hint: 'Full Name',
+                      textInputAction: TextInputAction.next,
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Email Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _emailController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Email',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
+                    _buildTextField(
+                      controller: _emailController,
+                      hint: 'Email',
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Password Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
+                    _buildTextField(
+                      controller: _passwordController,
+                      hint: 'Password',
+                      obscure: true,
+                      textInputAction: TextInputAction.next,
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Phone Number Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _phoneController,
-                        style: const TextStyle(color: Colors.white),
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          hintText: 'Phone Number',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                        ),
-                      ),
+                    _buildTextField(
+                      controller: _phoneController,
+                      hint: 'Phone Number',
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.done,
+                      onSubmit: (_) => _handleSignUp(),
                     ),
-
                     const SizedBox(height: 50),
-
-                    // Sign Up Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Handle sign up
-                        },
+                        onPressed: _isLoading ? null : _handleSignUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B35),
                           shape: RoundedRectangleBorder(
@@ -210,20 +165,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
-                    // I Have an Account
                     GestureDetector(
                       onTap: () {
                         Navigator.pop(context);
@@ -237,7 +198,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -245,6 +205,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    bool obscure = false,
+    TextInputType keyboardType = TextInputType.text,
+    TextInputAction textInputAction = TextInputAction.done,
+    void Function(String)? onSubmit,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmit,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(
+            color: Color(0xFF7C7C8D),
+            fontSize: 16,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
+        ),
       ),
     );
   }
