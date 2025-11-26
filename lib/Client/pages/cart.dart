@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/nav_bar.dart';
+import 'paymentPage.dart';
 
 // Cart Item Model
 class CartItem {
@@ -24,7 +25,6 @@ class CartItem {
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
 
-
   @override
   State<CartScreen> createState() => _CartScreenState();
 }
@@ -37,10 +37,10 @@ class _CartScreenState extends State<CartScreen> {
       name: 'Shawarma Wrap',
       image: 'assets/images/shwarma.jpeg',
       description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
+        'Lorem ipsum dolor sit amet',
+        'Ut wisi enim ad',
+        'Lor in hendrerit in vu',
+        'Accumsan et iusto odio d',
       ],
       quantity: 5,
       price: 250.0,
@@ -50,10 +50,10 @@ class _CartScreenState extends State<CartScreen> {
       name: 'Crepe',
       image: 'assets/images/mlawi.jpeg',
       description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
+        'Lorem ipsum dolor sit amet',
+        'Ut wisi enim ad',
+        'Lor in hendrerit in vu',
+        'Accumsan et iusto odio d',
       ],
       quantity: 2,
       price: 180.0,
@@ -92,7 +92,7 @@ class _CartScreenState extends State<CartScreen> {
         height: double.infinity,
         decoration: BoxDecoration(
           color: const Color(0xFF2B2B2B),
-          image: DecorationImage(
+          image: const DecorationImage(
             image: AssetImage('assets/images/group55.png'),
             fit: BoxFit.cover,
             opacity: 0.1,
@@ -319,7 +319,12 @@ class _CartScreenState extends State<CartScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // Handle order
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PaymentPage(total: totalPrice),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF424242),
@@ -343,7 +348,6 @@ class _CartScreenState extends State<CartScreen> {
 
               // Bottom Navigation Bar
               NavBar(currentPage: 'cart'),
-
             ],
           ),
         ),
