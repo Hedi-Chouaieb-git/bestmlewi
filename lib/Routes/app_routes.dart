@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_app/Gerant/pages/Dashboard.dart';
 
 // Auth
 import '../Auth/signin_page.dart';
@@ -30,6 +31,7 @@ class AppRoutes {
   // Public auth
   static const String signIn = '/signin';
   static const String signUp = '/signup';
+  static const String dashboard = '/dashboard';
 
   // Client
   static const String clientHome = '/client/home';
@@ -57,6 +59,7 @@ class AppRoutes {
     // Auth
     signIn: (context) => const SignInScreen(),
     signUp: (context) => const SignUpScreen(),
+    dashboard: (context) =>  DashboardPage(),
 
     // Client
     clientHome: (context) => const ClientHomePage(),
