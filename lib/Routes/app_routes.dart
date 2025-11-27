@@ -37,7 +37,7 @@ class AppRoutes {
   static const String clientCart = '/client/cart';
 
   // Gerant auth + dashboard
-  static const String gerantSignIn = '/gerant/signin';
+  static const String gerantSignIn = '/gerant/signIn';
   static const String gerantSignUp = '/gerant/signup';
   static const String gerantDashboard = '/gerant/dashboard';
   static const String gerantMenu = '/gerant/menu';
