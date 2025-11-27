@@ -20,14 +20,14 @@ class CartItem {
 }
 
 // Cart Screen
-class CartScreen extends StatefulWidget {
-  const CartScreen({Key? key}) : super(key: key);
+class GerantCartScreen extends StatefulWidget {
+  const GerantCartScreen({Key? key}) : super(key: key);
 
   @override
-  State<CartScreen> createState() => _CartScreenState();
+  State<GerantCartScreen> createState() => _GerantCartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _GerantCartScreenState extends State<GerantCartScreen> {
   // Sample cart items
   List<CartItem> cartItems = [
     CartItem(

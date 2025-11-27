@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/Auth/signup_page.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -45,7 +46,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (response != null) {
         // Login successful - navigate to /menu
-        Navigator.pushReplacementNamed(context, '/menu');
+        Navigator.pushReplacementNamed(context, AppRoutes.clientMenu);
       }
 
     } on PostgrestException catch (e) {
@@ -281,7 +282,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const SignUpScreen(),
+                          builder: (context) => const SignUpScreen(),
                           ),
                         );
                       },

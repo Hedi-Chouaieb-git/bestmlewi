@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import 'package:supabase_flutter/supabase_flutter.dart';
-=======
 
-import '../../../Auth/signup_page.dart';
->>>>>>> f2af5065b3643937146ae58626ec0547639525ad
+import 'package:supabase_app/Gerant/services/auth_service.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
 
-import '../../routes/app_routes.dart';
-import '../../services/auth_service.dart';
 import 'signup_page.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({Key? key}) : super(key: key);
+class GerantSignInScreen extends StatefulWidget {
+  const GerantSignInScreen({Key? key}) : super(key: key);
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<GerantSignInScreen> createState() => _GerantSignInScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _GerantSignInScreenState extends State<GerantSignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _authService = AuthService();
@@ -45,7 +41,7 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       await _authService.signIn(email: email, password: password);
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+      Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
     } on AuthException catch (error) {
       _showSnack(error.message);
     } catch (error) {
@@ -71,7 +67,7 @@ class _SignInScreenState extends State<SignInScreen> {
           Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/images/group55.png'),
                 fit: BoxFit.cover,
@@ -83,7 +79,7 @@ class _SignInScreenState extends State<SignInScreen> {
             height: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFF2B2B2B).withOpacity(0.85),
-              image: DecorationImage(
+              image: const DecorationImage(
                 image: AssetImage('assets/images/group55.png'),
                 fit: BoxFit.cover,
                 opacity: 0.1,
@@ -99,18 +95,18 @@ class _SignInScreenState extends State<SignInScreen> {
                   children: [
                     const SizedBox(height: 80),
                     const Text(
-                      'Sign In',
+                      'Manager Sign In',
                       style: TextStyle(
-                        fontSize: 48,
+                        fontSize: 42,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFF6B35),
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Welcome',
+                      'Bienvenue',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 26,
                         color: Colors.white,
                         fontWeight: FontWeight.w300,
                       ),
@@ -153,7 +149,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         onSubmitted: (_) => _handleSignIn(),
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: 'Password',
+                          hintText: 'Mot de passe',
                           hintStyle: TextStyle(
                             color: Color(0xFF7C7C8D),
                             fontSize: 16,
@@ -195,7 +191,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                         const SizedBox(width: 12),
                         const Text(
-                          'Remember me',
+                          'Se souvenir de moi',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -226,7 +222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ),
                               )
                             : const Text(
-                                'Sign In',
+                                'Se connecter',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -241,12 +237,12 @@ class _SignInScreenState extends State<SignInScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const SignUpScreen(),
+                            builder: (context) => const GerantSignUpScreen(),
                           ),
                         );
                       },
                       child: const Text(
-                        "I Don't Have an Account",
+                        "Créer un compte",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -256,7 +252,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'Forgot password?',
+                      'Mot de passe oublié ?',
                       style: TextStyle(
                         color: Color(0xFF7C7C8D),
                         fontSize: 14,

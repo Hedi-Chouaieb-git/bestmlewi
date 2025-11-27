@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final dynamic product;
+  final bool isModal;
 
-  const ProductDetailPage({super.key, required this.product, required bool isModal});
+  const ProductDetailPage({
+    super.key,
+    required this.product,
+    this.isModal = false,
+  });
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -22,6 +27,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       backgroundColor: const Color(0xFF2B2B2B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF424242),
+        automaticallyImplyLeading: !widget.isModal,
+        leading: widget.isModal
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
         title: Text(widget.product.name),
       ),
       body: SingleChildScrollView(

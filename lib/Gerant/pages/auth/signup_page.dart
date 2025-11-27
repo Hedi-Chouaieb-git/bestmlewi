@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../routes/app_routes.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
 import '../../services/auth_service.dart';
 
-class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key);
+class GerantSignUpScreen extends StatefulWidget {
+  const GerantSignUpScreen({Key? key}) : super(key: key);
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  State<GerantSignUpScreen> createState() => _GerantSignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _GerantSignUpScreenState extends State<GerantSignUpScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -52,7 +52,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showSnack('Compte créé. Vérifiez vos mails pour valider.');
       Navigator.pushNamedAndRemoveUntil(
         context,
-        AppRoutes.signIn,
+        AppRoutes.gerantSignIn,
         (route) => false,
       );
     } on AuthException catch (error) {

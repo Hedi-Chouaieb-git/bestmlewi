@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/role_service.dart';
 import '../models/Collaborator.dart';
 import '../models/Sales Point.dart';
-import '../routes/app_routes.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
 
 class AffecterRolePage extends StatefulWidget {
   @override
@@ -331,7 +331,7 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
                     // Logo - Navigate to Dashboard
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
                       },
                       child: Image.asset(
                         'assets/images/logo.png',
@@ -343,7 +343,7 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
                     // Home/Menu Button - Navigate to Dashboard
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
                       },
                       child: Container(
                         width: 70,
@@ -362,7 +362,7 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
                     // Menu Button - Navigate to Collaborateurs
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.collab);
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantTeam);
                       },
                       child: const Icon(
                         Icons.menu,

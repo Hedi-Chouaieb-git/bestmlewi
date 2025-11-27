@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
+
 import '../widgets/nav_bar.dart';
-import 'paymentPage.dart';
+import 'PaymentPage.dart';
 
 // Cart Item Model
 class CartItem {
@@ -22,14 +24,14 @@ class CartItem {
 }
 
 // Cart Screen
-class CartScreen extends StatefulWidget {
-  const CartScreen({Key? key}) : super(key: key);
+class ClientCartScreen extends StatefulWidget {
+  const ClientCartScreen({Key? key}) : super(key: key);
 
   @override
-  State<CartScreen> createState() => _CartScreenState();
+  State<ClientCartScreen> createState() => _ClientCartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _ClientCartScreenState extends State<ClientCartScreen> {
   // Sample cart items
   List<CartItem> cartItems = [
     CartItem(
@@ -347,7 +349,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
 
               // Bottom Navigation Bar
-              NavBar(currentPage: 'cart'),
+              const NavBar(currentPage: AppRoutes.clientCart),
             ],
           ),
         ),

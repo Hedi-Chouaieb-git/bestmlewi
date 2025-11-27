@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import '../services/product_service.dart';
 import '../models/Product.dart';
-import '../routes/app_routes.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
 
 // Main Products Page
-class MainProductsPage extends StatefulWidget {
-  const MainProductsPage({Key? key}) : super(key: key);
+class GerantMenuPage extends StatefulWidget {
+  const GerantMenuPage({Key? key}) : super(key: key);
 
   @override
-  State<MainProductsPage> createState() => _MainProductsPageState();
+  State<GerantMenuPage> createState() => _GerantMenuPageState();
 }
 
-class _MainProductsPageState extends State<MainProductsPage> {
+class _GerantMenuPageState extends State<GerantMenuPage> {
   final ProductService _productService = ProductService();
   final TextEditingController _searchController = TextEditingController();
   
@@ -343,7 +343,7 @@ class _MainProductsPageState extends State<MainProductsPage> {
                     // Logo - Navigate to Dashboard
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
                       },
                       child: Image.asset(
                         'assets/images/logo.png',
@@ -371,7 +371,7 @@ class _MainProductsPageState extends State<MainProductsPage> {
                     // Cart Button - Navigate to cart
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.cart);
+                        Navigator.pushNamed(context, AppRoutes.gerantCart);
                       },
                       child: const Icon(
                         Icons.shopping_cart,
@@ -383,7 +383,7 @@ class _MainProductsPageState extends State<MainProductsPage> {
                     // Menu Button - Navigate to Dashboard
                     GestureDetector(
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
                       },
                       child: const Icon(
                         Icons.menu,

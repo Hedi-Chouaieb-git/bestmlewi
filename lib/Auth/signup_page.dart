@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:supabase_app/Routes/app_routes.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -85,7 +87,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _showSnackBar('Client account created successfully!');
 
         // Navigate to login page
-        Navigator.pushReplacementNamed(context, '/menu');
+        Navigator.pushReplacementNamed(context, AppRoutes.clientMenu);
       }
 
     } catch (e) {
@@ -247,7 +249,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       onTap: _isLoading
                           ? null
                           : () {
-                        Navigator.pushReplacementNamed(context, '/signin');
+                        Navigator.pushReplacementNamed(context, AppRoutes.signIn);
                       },
                       child: Text(
                         "I already have an account",

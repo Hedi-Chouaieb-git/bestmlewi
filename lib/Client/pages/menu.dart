@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/Client/pages/product_detail.dart';
+import 'package:supabase_app/Routes/app_routes.dart';
+
 import '../widgets/nav_bar.dart';
 
 class Product {
@@ -20,14 +22,14 @@ class Product {
   });
 }
 
-class MainProductsPage extends StatefulWidget {
-  const MainProductsPage({super.key});
+class ClientMenuPage extends StatefulWidget {
+  const ClientMenuPage({super.key});
 
   @override
-  State<MainProductsPage> createState() => _MainProductsPageState();
+  State<ClientMenuPage> createState() => _ClientMenuPageState();
 }
 
-class _MainProductsPageState extends State<MainProductsPage> {
+class _ClientMenuPageState extends State<ClientMenuPage> {
   final TextEditingController _searchController = TextEditingController();
   String selectedCategory = 'mlawi';
   String searchQuery = '';
@@ -108,7 +110,7 @@ class _MainProductsPageState extends State<MainProductsPage> {
 
               Expanded(child: _buildProductsList()),
 
-              const NavBar(currentPage: 'menu'),
+              const NavBar(currentPage: AppRoutes.clientMenu),
             ],
           ),
         ),
