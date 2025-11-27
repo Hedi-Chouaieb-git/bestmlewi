@@ -20,8 +20,7 @@ import '../Gerant/pages/menu.dart';
 import '../Gerant/pages/order.dart';
 import '../Gerant/pages/sales point.dart';
 import '../Gerant/pages/traking.dart';
-import '../Gerant/pages/auth/signin_page.dart';
-import '../Gerant/pages/auth/signup_page.dart';
+
 
 // Livreur
 import '../Collaborateur/Livreur/Home.dart';
@@ -37,8 +36,6 @@ class AppRoutes {
   static const String clientCart = '/client/cart';
 
   // Gerant auth + dashboard
-  static const String gerantSignIn = '/gerant/signin';
-  static const String gerantSignUp = '/gerant/signup';
   static const String gerantDashboard = '/gerant/dashboard';
   static const String gerantMenu = '/gerant/menu';
   static const String gerantCart = '/gerant/cart';
@@ -64,8 +61,6 @@ class AppRoutes {
     clientCart: (context) => const ClientCartScreen(),
 
     // Gerant auth + dashboard
-    gerantSignIn: (context) => const GerantSignInScreen(),
-    gerantSignUp: (context) => const GerantSignUpScreen(),
     gerantDashboard: (context) => const DashboardPage(),
     gerantMenu: (context) => const GerantMenuPage(),
     gerantCart: (context) => const GerantCartScreen(),
