@@ -29,6 +29,7 @@ CREATE TABLE "Collaborateurs" (
   "email" TEXT UNIQUE NOT NULL,
   "password" TEXT NOT NULL,  -- Note: Should be hashed in production
   "role" TEXT NOT NULL,  -- Values: 'livreur', 'coordinateur', 'cuisinier', 'chef', 'gerant'
+  "idPointAffecte" TEXT REFERENCES "PointDeVente"("idPoint"),  -- Currently assigned point
   "disponible" BOOLEAN DEFAULT true,
   "telephone" TEXT,
   "created_at" TIMESTAMP DEFAULT NOW(),
@@ -94,13 +95,22 @@ INSERT INTO "Client" ("idClient", "nom", "prenom", "email", "phone", "password",
 CREATE TABLE "Commande" (
   "idCommande" TEXT PRIMARY KEY,
   "idClient" TEXT NOT NULL REFERENCES "Client"("idClient"),
+  "idPointVente" TEXT REFERENCES "PointDeVente"("idPoint"),  -- Assigned TopMlawi point
   "idCollab" TEXT REFERENCES "Collaborateurs"("idCollab"),  -- Assigned livreur
+  "idCuisinier" TEXT REFERENCES "Collaborateurs"("idCollab"),  -- Assigned cook
   "statut" TEXT NOT NULL DEFAULT 'en_attente',  -- Values: 'en_attente', 'en_preparation', 'en_cours', 'livree', 'annulee'
   "dateCommande" TIMESTAMP DEFAULT NOW(),
   "dateLivraison" TIMESTAMP,
   "montantTotal" DECIMAL(10, 2) NOT NULL,
   "adresseLivraison" TEXT NOT NULL,
   "notes" TEXT,
+  "latitude" DECIMAL(10, 8),  -- Client location latitude
+  "longitude" DECIMAL(11, 8),  -- Client location longitude
+  "tempsPreparationDebut" TIMESTAMP,  -- Preparation start time
+  "tempsPreparationFin" TIMESTAMP,  -- Preparation end time
+  "tempsRemiseLivreur" TIMESTAMP,  -- Handover to delivery time
+  "tempsRecuperationLivreur" TIMESTAMP,  -- Pickup by delivery time
+  "tempsLivraison" TIMESTAMP,  -- Delivery completion time
   "created_at" TIMESTAMP DEFAULT NOW(),
   "updated_at" TIMESTAMP DEFAULT NOW()
 );
@@ -354,6 +364,94 @@ INSERT INTO "roles" ("name", "description") VALUES
 
 ---
 
+## Table: Notifications
+
+**Purpose**: Stores notifications for delivery persons and coordinators.
+
+### Schema
+
+```sql
+CREATE TABLE "Notifications" (
+  "idNotification" TEXT PRIMARY KEY,
+  "idDestinataire" TEXT NOT NULL REFERENCES "Collaborateurs"("idCollab"),  -- Recipient
+  "idCommande" TEXT REFERENCES "Commande"("idCommande"),  -- Related order
+  "type" TEXT NOT NULL,  -- Values: 'nouvelle_commande', 'commande_assignee', 'statut_modifie', 'urgence'
+  "titre" TEXT NOT NULL,
+  "message" TEXT NOT NULL,
+  "lue" BOOLEAN DEFAULT false,
+  "created_at" TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Sample Data
+
+```sql
+INSERT INTO "Notifications" ("idNotification", "idDestinataire", "idCommande", "type", "titre", "message", "lue") VALUES
+('NOT001', 'COLL002', 'CMD001', 'nouvelle_commande', 'Nouvelle livraison', 'Vous avez une nouvelle commande à livrer', false),
+('NOT002', 'COLL001', 'CMD002', 'commande_assignee', 'Commande assignée', 'Nouvelle commande à coordonner', false);
+```
+
+---
+
+## Table: Locations
+
+**Purpose**: Stores real-time location updates from delivery persons.
+
+### Schema
+
+```sql
+CREATE TABLE "Locations" (
+  "idLocation" TEXT PRIMARY KEY,
+  "idCollab" TEXT NOT NULL REFERENCES "Collaborateurs"("idCollab"),  -- Delivery person
+  "latitude" DECIMAL(10, 8) NOT NULL,
+  "longitude" DECIMAL(11, 8) NOT NULL,
+  "timestamp" TIMESTAMP DEFAULT NOW(),
+  "vitesse" DECIMAL(5, 2),  -- Speed in km/h (optional)
+  "precision" DECIMAL(5, 2)  -- Location accuracy in meters (optional)
+);
+```
+
+### Sample Data
+
+```sql
+INSERT INTO "Locations" ("idLocation", "idCollab", "latitude", "longitude", "timestamp", "vitesse", "precision") VALUES
+('LOC001', 'COLL002', 36.8065, 10.1815, NOW(), 25.5, 5.2),
+('LOC002', 'COLL003', 36.8188, 10.1658, NOW() - INTERVAL '5 minutes', 0.0, 3.1);
+```
+
+---
+
+## Table: RefundRequests
+
+**Purpose**: Stores refund requests from clients.
+
+### Schema
+
+```sql
+CREATE TABLE "RefundRequests" (
+  "idRefund" TEXT PRIMARY KEY,
+  "idCommande" TEXT NOT NULL REFERENCES "Commande"("idCommande"),
+  "idClient" TEXT NOT NULL REFERENCES "Client"("idClient"),
+  "motif" TEXT NOT NULL,  -- Reason for refund
+  "statut" TEXT NOT NULL DEFAULT 'en_attente',  -- Values: 'en_attente', 'approuvee', 'refusee'
+  "montantRembourse" DECIMAL(10, 2),
+  "traiteePar" TEXT REFERENCES "Collaborateurs"("idCollab"),  -- Manager who processed it
+  "dateTraitement" TIMESTAMP,
+  "notes" TEXT,
+  "created_at" TIMESTAMP DEFAULT NOW(),
+  "updated_at" TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Sample Data
+
+```sql
+INSERT INTO "RefundRequests" ("idRefund", "idCommande", "idClient", "motif", "statut", "montantRembourse", "traiteePar") VALUES
+('REF001', 'CMD001', 'CLI001', 'Livraison en retard pour plat chaud', 'en_attente', NULL, NULL);
+```
+
+---
+
 ## Important Notes
 
 1. **Password Security**: The `password` fields in both `Client` and `Collaborateurs` tables should be hashed using a secure hashing algorithm (e.g., bcrypt) in production. Never store plain text passwords.
@@ -447,4 +545,3 @@ After creating the tables and inserting sample data, you can test the applicatio
 3. **Livreur Access**: Use email `sophie.martin@example.com` and password `password123`
 
 Make sure to adjust authentication logic based on your actual implementation.
-

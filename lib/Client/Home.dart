@@ -165,9 +165,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
           ),
           const SizedBox(width: 12),
           _QuickActionButton(
-            icon: Icons.delivery_dining,
+            icon: Icons.track_changes,
             label: 'Suivi',
-            onTap: () => Navigator.pushNamed(context, AppRoutes.livreurHome),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.clientOrderTracking),
           ),
         ],
       ),

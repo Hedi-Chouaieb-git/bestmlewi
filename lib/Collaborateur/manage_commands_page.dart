@@ -99,20 +99,109 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
     }
   }
 
+  Future<void> assignCook(String commandId) async {
+    try {
+      final cooks = await supabase
+          .from('Collaborateurs')
+          .select()
+          .eq('role', 'cuisinier');
+
+      if (!mounted) return;
+
+      if ((cooks as List).isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aucun cuisinier trouvé'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final selected = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF3A3A3A),
+          title: const Text(
+            'Assigner un cuisinier',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: cooks.length,
+              itemBuilder: (context, index) {
+                final cook = cooks[index];
+                return ListTile(
+                  title: Text(
+                    '${cook['prenom']} ${cook['nom']}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    'ID: ${cook['idCollab']}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  leading: const Icon(Icons.restaurant, color: Color(0xFFFF6B35)),
+                  onTap: () => Navigator.pop(context, cook),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      if (selected != null) {
+        final now = DateTime.now().toIso8601String();
+        await supabase
+            .from('Commande')
+            .update({
+              'idCuisinier': selected['idCollab'],
+              'statut': 'en_preparation',
+              'tempsPreparationDebut': now,
+            })
+            .eq('idCommande', commandId);
+
+        // Create notification for cook
+        await _createNotification(selected['idCollab'], commandId, 'commande_assignee', 'Nouvelle commande à préparer');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Cuisinier ${selected['prenom']} ${selected['nom']} assigné'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
+        loadCommands();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> assignDeliveryPerson(String commandId) async {
     try {
       final deliveryPersons = await supabase
           .from('Collaborateurs')
           .select()
-          .eq('role', 'livreur')
-          .eq('disponible', true);
+          .eq('role', 'livreur');
 
       if (!mounted) return;
 
       if ((deliveryPersons as List).isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Aucun livreur disponible'),
+            content: Text('Aucun livreur trouvé'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -153,10 +242,19 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
       );
 
       if (selected != null) {
+        final now = DateTime.now().toIso8601String();
         await supabase
             .from('Commande')
-            .update({'idCollab': selected['idCollab'], 'statut': 'en_cours'})
+            .update({
+              'idCollab': selected['idCollab'],
+              'statut': 'en_preparation',
+              'tempsPreparationFin': now,
+              'tempsRemiseLivreur': now,
+            })
             .eq('idCommande', commandId);
+
+        // Create notification for delivery person
+        await _createNotification(selected['idCollab'], commandId, 'commande_assignee', 'Nouvelle livraison à effectuer');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -179,6 +277,23 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _createNotification(String recipientId, String orderId, String type, String message) async {
+    try {
+      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
+      await supabase.from('Notifications').insert({
+        'idNotification': notificationId,
+        'idDestinataire': recipientId,
+        'idCommande': orderId,
+        'type': type,
+        'titre': message,
+        'message': 'Commande $orderId: $message',
+        'lue': false,
+      });
+    } catch (e) {
+      print('Error creating notification: $e');
     }
   }
 
@@ -450,6 +565,52 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
                 const SizedBox(height: 8),
               ],
 
+              // Show cook assignment status
+              if (command['idCuisinier'] != null) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.restaurant, color: Color(0xFFFF6B35), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Cuisinier assigné',
+                            style: TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                          Text(
+                            'Cuisinier ID: ${command['idCuisinier']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ] else if (statut == 'en_attente')
+                ElevatedButton.icon(
+                  onPressed: () => assignCook(command['idCommande']),
+                  icon: const Icon(Icons.restaurant, size: 18),
+                  label: const Text('Assigner cuisinier'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B35),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 8),
+
+              // Show delivery person assignment status
               if (collaborateur != null)
                 Row(
                   children: [
@@ -485,7 +646,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
                       ),
                   ],
                 )
-              else
+              else if (statut == 'en_preparation')
                 ElevatedButton.icon(
                   onPressed: () => assignDeliveryPerson(command['idCommande']),
                   icon: const Icon(Icons.person_add, size: 18),

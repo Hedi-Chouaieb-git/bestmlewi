@@ -13,7 +13,7 @@ class RoleService {
     try {
       final response = await _client
           .from('Collaborateurs')
-          .select('idCollab, nom, prenom, email, role, disponible, telephone, salesPointId')
+          .select('idCollab, nom, prenom, email, role, disponible, telephone')
           .order('nom');
 
       final rows = List<Map<String, dynamic>>.from(response);
@@ -76,7 +76,6 @@ class RoleService {
           .from('Collaborateurs')
           .update({
             'role': role,
-            if (salesPointId != null) 'salesPointId': salesPointId,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('idCollab', collaboratorId);
@@ -116,7 +115,7 @@ class RoleService {
     try {
       final response = await _client
           .from('Collaborateurs')
-          .select('idCollab, nom, prenom, email, role, disponible, telephone, salesPointId')
+          .select('idCollab, nom, prenom, email, role, disponible, telephone')
           .eq('idCollab', id)
           .maybeSingle();
 
@@ -128,4 +127,3 @@ class RoleService {
     }
   }
 }
-

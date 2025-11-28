@@ -128,9 +128,9 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
       }
 
       // Set current sales point if it exists
-      if (collaborator.salesPointId != null && 
-          _salesPoints.any((sp) => sp.id == collaborator.salesPointId)) {
-        selectedPointId = collaborator.salesPointId;
+      if (collaborator.idPointAffecte != null &&
+          _salesPoints.any((sp) => sp.id == collaborator.idPointAffecte)) {
+        selectedPointId = collaborator.idPointAffecte;
       } else {
         selectedPointId = null;
       }

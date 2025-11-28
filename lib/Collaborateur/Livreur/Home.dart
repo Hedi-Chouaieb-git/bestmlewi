@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'delivery_details_page.dart';
 
 class LivreurHomePage extends StatefulWidget {
   const LivreurHomePage({super.key});
@@ -30,9 +31,26 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
     try {
       final response = await supabase
           .from('Commande')
-          .select('idCommande, statut, dateCommande, montantTotal, adresseLivraison, Client(idClient, nom, prenom, phone, adresse)')
+          .select('idCommande, statut, dateCommande, montantTotal, adresseLivraison, idClient')
           .order('dateCommande', ascending: false)
           .limit(12);
+
+      // Get client data separately
+      final orders = List<Map<String, dynamic>>.from(response);
+      for (var order in orders) {
+        if (order['idClient'] != null) {
+          try {
+            final clientData = await supabase
+                .from('Client')
+                .select('idClient, nom, prenom, phone, adresse')
+                .eq('idClient', order['idClient'])
+                .single();
+            order['Client'] = clientData;
+          } catch (e) {
+            order['Client'] = null;
+          }
+        }
+      }
       setState(() {
         _deliveries = List<Map<String, dynamic>>.from(response);
       });
@@ -49,7 +67,24 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
 
   Future<void> _updateStatus(String id, String newStatus) async {
     try {
-      await supabase.from('Commande').update({'statut': newStatus}).eq('idCommande', id);
+      final now = DateTime.now().toIso8601String();
+      final updates = {'statut': newStatus};
+
+      // Add timestamp based on status
+      switch (newStatus) {
+        case 'en_cours':
+          updates['tempsRecuperationLivreur'] = now;
+          break;
+        case 'livree':
+          updates['tempsLivraison'] = now;
+          break;
+      }
+
+      await supabase.from('Commande').update(updates).eq('idCommande', id);
+
+      // Create notification for coordinator/manager
+      await _createNotification(id, 'statut_modifie', 'Statut de livraison mis à jour');
+
       await _loadDeliveries();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,6 +98,54 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Impossible de mettre à jour: $error'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _createNotification(String orderId, String type, String message) async {
+    try {
+      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
+      await supabase.from('Notifications').insert({
+        'idNotification': notificationId,
+        'idDestinataire': 'COORD001', // This should be dynamic based on coordinator
+        'idCommande': orderId,
+        'type': type,
+        'titre': message,
+        'message': 'Commande $orderId: $message',
+        'lue': false,
+      });
+    } catch (e) {
+      print('Error creating notification: $e');
+    }
+  }
+
+  Future<void> _updateLocation() async {
+    // In a real app, you'd get location from GPS
+    // For now, we'll simulate location updates
+    try {
+      final locationId = DateTime.now().millisecondsSinceEpoch.toString();
+      await supabase.from('Locations').insert({
+        'idLocation': locationId,
+        'idCollab': 'COLL002', // This should be the current delivery person ID
+        'latitude': 36.8065,
+        'longitude': 10.1815,
+        'vitesse': 25.5,
+        'precision': 5.2,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Position mise à jour'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur de localisation: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -148,75 +231,87 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
         ? DateFormat('dd MMM - HH:mm').format(DateTime.tryParse(date) ?? DateTime.now())
         : 'Date inconnue';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF424242),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _statusColor(status).withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Cmd #${delivery['idCommande']}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _statusColor(status).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DeliveryDetailsPage(
+              deliveryId: delivery['idCommande'].toString(),
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF424242),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _statusColor(status).withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Cmd #${delivery['idCommande']}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                child: Text(
-                  _statusLabel(status),
-                  style: TextStyle(color: _statusColor(status), fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            client != null ? '${client['nom'] ?? ''} • ${client['adresse'] ?? ''}' : 'Client inconnu',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            formattedDate,
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(color: _statusColor(status)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _statusColor(status).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  onPressed: status == 'livree'
-                      ? null
-                      : () => _updateStatus(
-                            delivery['idCommande'].toString(),
-                            status == 'en_cours' ? 'livree' : 'en_cours',
-                          ),
-                  icon: Icon(status == 'en_cours' ? Icons.check : Icons.play_arrow),
-                  label: Text(status == 'en_cours' ? 'Marquer livrée' : 'Commencer'),
+                  child: Text(
+                    _statusLabel(status),
+                    style: TextStyle(color: _statusColor(status), fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              IconButton(
-                onPressed: () => _updateStatus(delivery['idCommande'].toString(), 'en_attente'),
-                icon: const Icon(Icons.refresh, color: Colors.white54),
-                tooltip: 'Replanifier',
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              client != null ? '${client['nom'] ?? ''} • ${client['adresse'] ?? ''}' : 'Client inconnu',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              formattedDate,
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: _statusColor(status)),
+                    ),
+                    onPressed: status == 'livree'
+                        ? null
+                        : () => _updateStatus(
+                              delivery['idCommande'].toString(),
+                              status == 'en_cours' ? 'livree' : 'en_cours',
+                            ),
+                    icon: Icon(status == 'en_cours' ? Icons.check : Icons.play_arrow),
+                    label: Text(status == 'en_cours' ? 'Marquer livrée' : 'Commencer'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => _updateStatus(delivery['idCommande'].toString(), 'en_attente'),
+                  icon: const Icon(Icons.refresh, color: Colors.white54),
+                  tooltip: 'Replanifier',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

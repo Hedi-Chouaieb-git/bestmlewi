@@ -95,7 +95,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     const SizedBox(height: 24),
                     _buildAlertsSection(data.alerts),
                     const SizedBox(height: 24),
-                    _buildActions(),
+            _buildActions(),
+            const SizedBox(height: 24),
+            _buildOrderManagementActions(),
                     const SizedBox(height: 16),
                     _buildLastUpdated(data),
                   ],
@@ -315,15 +317,66 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
         const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () => _openRoute(AppRoutes.gerantSalesPoints),
+                  style: _actionStyle(),
+                  child: const Text(
+                    'Points de\nvente',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () => _openRoute(AppRoutes.gerantRefunds),
+                  style: _actionStyle(),
+                  child: const Text(
+                    'Remboursements',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderManagementActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Gestion des Commandes',
+          style: TextStyle(color: Color(0xFFFF6B35), fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           height: 56,
-          child: ElevatedButton(
-            onPressed: () => _openRoute(AppRoutes.gerantSalesPoints),
-            style: _actionStyle(),
-            child: const Text(
-              'Points de vente',
+          child: ElevatedButton.icon(
+            onPressed: () => _openRoute(AppRoutes.gerantOrderManagement),
+            icon: const Icon(Icons.assignment),
+            label: const Text(
+              'Gérer les Commandes',
               style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
         ),

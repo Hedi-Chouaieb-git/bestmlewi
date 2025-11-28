@@ -1,42 +1,41 @@
 class KitchenMember {
-  final String id;
-  final String name;
-  final String? currentOrder;
-  final String status; // available, busy, offline
+  final String idMembre;
+  final String idCollab;
   final String? specialite;
-  final int? experience; // Years of experience
+  final int? experience;
+  final bool disponible;
+  final DateTime? createdAt;
 
   KitchenMember({
-    required this.id,
-    required this.name,
-    this.currentOrder,
-    required this.status,
+    required this.idMembre,
+    required this.idCollab,
     this.specialite,
     this.experience,
+    this.disponible = true,
+    this.createdAt,
   });
-
-  bool get isAvailable => status.toLowerCase() == 'available';
 
   factory KitchenMember.fromJson(Map<String, dynamic> json) {
     return KitchenMember(
-      id: json['id'] as String? ?? json['idMembre'] as String,
-      name: json['name'] as String,
-      currentOrder: json['currentOrder'] as String?,
-      status: json['status'] as String? ?? 'available',
+      idMembre: json['idMembre'] as String,
+      idCollab: json['idCollab'] as String,
       specialite: json['specialite'] as String?,
       experience: json['experience'] as int?,
+      disponible: json['disponible'] as bool? ?? true,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
-      'currentOrder': currentOrder,
-      'status': status,
+      'idMembre': idMembre,
+      'idCollab': idCollab,
       'specialite': specialite,
       'experience': experience,
+      'disponible': disponible,
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 }
-

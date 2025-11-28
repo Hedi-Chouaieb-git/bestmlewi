@@ -21,12 +21,16 @@ class _SignUpPageState extends State<SignUpPage> {
   final _confirmPasswordController = TextEditingController();
   final _adresseController = TextEditingController();
   final _telephoneController = TextEditingController();
+  final _accessCodeController = TextEditingController();
 
   bool _isClient = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String? _selectedRole;
+
+  // Special access code for equipe signup
+  static const String _equipeAccessCode = "MLEWI2024";
 
   @override
   void initState() {
@@ -47,6 +51,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _confirmPasswordController.dispose();
     _adresseController.dispose();
     _telephoneController.dispose();
+    _accessCodeController.dispose();
     super.dispose();
   }
 
@@ -65,6 +70,12 @@ class _SignUpPageState extends State<SignUpPage> {
           _passwordController.text.isEmpty ||
           _selectedRole == null) {
         _showSnackBar('Veuillez remplir tous les champs obligatoires');
+        return;
+      }
+
+      // Validate access code for equipe signup
+      if (_accessCodeController.text.trim() != _equipeAccessCode) {
+        _showSnackBar('Code d\'accès invalide. Contactez l\'administration.');
         return;
       }
     }
@@ -295,6 +306,18 @@ class _SignUpPageState extends State<SignUpPage> {
                           ],
                           onChanged: (value) => setState(() => _selectedRole = value),
                         ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildTextField(_accessCodeController, 'Code d\'accès*', Icons.vpn_key),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Code d\'accès requis pour rejoindre l\'équipe',
+                        style: TextStyle(
+                          color: Color(0xFF7C7C8D),
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                     ],

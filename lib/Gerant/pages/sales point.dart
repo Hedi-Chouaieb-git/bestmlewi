@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/models/sales_point.dart';
+import 'package:supabase_app/models/collaborator.dart';
 import 'package:supabase_app/Gerant/services/sales_point_service.dart';
+import 'package:supabase_app/Gerant/services/role_service.dart';
 
 import '../../routes/app_routes.dart';
 
@@ -465,6 +467,238 @@ class _PointDeVentePageState extends State<PointDeVentePage> {
     );
   }
 
+  void _showAssignDialog(SalesPoint point) {
+    final RoleService _roleService = RoleService();
+    List<Collaborator> _collaborators = [];
+    List<String> _roles = ['livreur', 'coordinateur'];
+    bool _isLoadingAssign = true;
+    String? _errorAssign;
+
+    String? selectedCollaboratorId;
+    String? selectedRole = 'livreur';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Load collaborators when dialog opens
+            if (_isLoadingAssign) {
+              _roleService.fetchCollaborators().then((collaborators) {
+                setState(() {
+                  _collaborators = collaborators;
+                  _isLoadingAssign = false;
+                });
+              }).catchError((error) {
+                setState(() {
+                  _errorAssign = error.toString();
+                  _isLoadingAssign = false;
+                });
+              });
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF424242),
+              title: Text(
+                'Affecter à ${point.title}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: _isLoadingAssign
+                  ? const SizedBox(
+                      height: 100,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _errorAssign != null
+                      ? SizedBox(
+                          height: 100,
+                          child: Center(
+                            child: Text(
+                              'Erreur: $_errorAssign',
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        )
+                      : _collaborators.isEmpty
+                      ? SizedBox(
+                          height: 120,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Aucun collaborateur trouvé',
+                                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Veuillez ajouter des collaborateurs d\'abord',
+                                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(); // Close assignment dialog
+                                    Navigator.pushNamed(context, AppRoutes.gerantTeam); // Go to collaborators page
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF6B35),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  ),
+                                  child: const Text(
+                                    'Gérer Collaborateurs',
+                                    style: TextStyle(color: Colors.white, fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Collaborator Dropdown
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3D3D5C),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: selectedCollaboratorId,
+                                    hint: const Text(
+                                      'Sélectionner un collaborateur',
+                                      style: TextStyle(
+                                        color: Color(0xFF7C7C8D),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    items: _collaborators
+                                        .map((collab) => DropdownMenuItem(
+                                              value: collab.idCollab,
+                                              child: Text(
+                                                collab.fullName,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ))
+                                        .toList(),
+                                    dropdownColor: const Color(0xFF3D3D5C),
+                                    icon: const Icon(
+                                      Icons.arrow_drop_down,
+                                      color: Color(0xFFFF6B35),
+                                    ),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        selectedCollaboratorId = val;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+
+                              // Role Dropdown
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3D3D5C),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: selectedRole,
+                                    hint: const Text(
+                                      'Sélectionner un rôle',
+                                      style: TextStyle(
+                                        color: Color(0xFF7C7C8D),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    items: _roles
+                                        .map((role) => DropdownMenuItem(
+                                              value: role,
+                                              child: Text(
+                                                role,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ))
+                                        .toList(),
+                                    dropdownColor: const Color(0xFF3D3D5C),
+                                    icon: const Icon(
+                                      Icons.arrow_drop_down,
+                                      color: Color(0xFFFF6B35),
+                                    ),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        selectedRole = val;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Annuler',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: (selectedCollaboratorId == null || selectedRole == null || _isLoadingAssign)
+                      ? null
+                      : () async {
+                          try {
+                            await _roleService.assignRole(
+                              collaboratorId: selectedCollaboratorId!,
+                              role: selectedRole!,
+                              salesPointId: point.id,
+                            );
+
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Collaborateur affecté avec succès'),
+                                backgroundColor: Color(0xFFFF6B35),
+                              ),
+                            );
+                            _loadSalesPoints(); // Refresh to show updated assignments
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erreur: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B35),
+                    disabledBackgroundColor: const Color(0xFFFF6B35).withOpacity(0.5),
+                  ),
+                  child: const Text('Affecter'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -598,27 +832,51 @@ class _PointDeVentePageState extends State<PointDeVentePage> {
                                                     Expanded(
                                                       child: SizedBox(
                                                         height: 48,
-                  child: ElevatedButton(
-                    onPressed: () => _showStatsDialog(point),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B35),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'STATS',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
+                                                        child: ElevatedButton(
+                                                          onPressed: () => _showStatsDialog(point),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: const Color(0xFFFF6B35),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(22),
+                                                            ),
+                                                            elevation: 0,
+                                                          ),
+                                                          child: const Text(
+                                                            'STATS',
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.white,
+                                                              fontSize: 18,
+                                                            ),
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 18),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: SizedBox(
+                                                        height: 48,
+                                                        child: ElevatedButton(
+                                                          onPressed: () => _showAssignDialog(point),
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: const Color(0xFFFF6B35),
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(22),
+                                                            ),
+                                                            elevation: 0,
+                                                          ),
+                                                          child: const Text(
+                                                            'AFFECTER',
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.white,
+                                                              fontSize: 18,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
                                                     Expanded(
                                                       child: SizedBox(
                                                         height: 48,

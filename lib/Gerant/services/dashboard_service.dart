@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/alert.dart';
 
 class DashboardSnapshot {
   DashboardSnapshot({
@@ -185,4 +186,3 @@ class DashboardService {
     }
   }
 }
-
