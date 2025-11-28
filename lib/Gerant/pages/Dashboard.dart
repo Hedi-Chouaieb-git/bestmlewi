@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_app/Gerant/services/auth_service.dart';
 import 'package:supabase_app/Gerant/services/dashboard_service.dart';
@@ -20,6 +21,16 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _snapshotFuture = _dashboardService.fetchSnapshot();
+    _setupRealtimeSubscription();
+  }
+
+  void _setupRealtimeSubscription() {
+    final supabase = Supabase.instance.client;
+    supabase.from('Commande').stream(primaryKey: ['idCommande']).listen((data) {
+      if (mounted) {
+        _refresh();
+      }
+    });
   }
 
   Future<void> _refresh() async {
@@ -37,7 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _logout() async {
     await _authService.signOut();
     if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.gerantSignIn, (route) => false);
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
   }
 
   @override
@@ -94,7 +105,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      // Removed bottom navigation as it contained non-functional buttons
     );
   }
 
@@ -338,43 +349,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      height: 80,
-      decoration: const BoxDecoration(color: Color(0xFF2B2B2B)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          GestureDetector(
-            onTap: () => _openRoute(AppRoutes.gerantMenu),
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 48,
-              height: 48,
-              fit: BoxFit.contain,
-            ),
-          ),
-          Container(
-            width: 70,
-            height: 70,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFF6B35),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.dashboard_customize, color: Colors.white, size: 32),
-          ),
-          IconButton(
-            onPressed: () => _openRoute(AppRoutes.gerantRoles),
-            icon: const Icon(Icons.badge_outlined, color: Colors.white, size: 30),
-          ),
-          IconButton(
-            onPressed: () => _openRoute(AppRoutes.gerantKitchen),
-            icon: const Icon(Icons.menu_book, color: Colors.white, size: 30),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Color _severityColor(DashboardAlertSeverity severity) {
     switch (severity) {
@@ -408,4 +383,3 @@ class _StatItem {
   final String value;
   final IconData icon;
 }
-

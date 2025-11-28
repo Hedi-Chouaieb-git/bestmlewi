@@ -1,82 +1,95 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_app/Auth/signup_page.dart';
+import 'package:supabase_app/services/auth_service.dart';
 import 'package:supabase_app/Routes/app_routes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'signup_page.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({Key? key}) : super(key: key);
+class SignInPage extends StatefulWidget {
+  const SignInPage({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = true;
+class _SignInPageState extends State<SignInPage> {
+  final _authService = AuthService();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isClient = true;
   bool _isLoading = false;
-
-  final SupabaseClient _supabase = Supabase.instance.client;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _signInWithPhoneAndPassword() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Please fill in all fields');
-      return;
+  Future<void> _handleSignIn() async {
+    if (_isClient) {
+      if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+        _showSnackBar('Veuillez remplir tous les champs');
+        return;
+      }
+    } else {
+      if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+        _showSnackBar('Veuillez remplir tous les champs');
+        return;
+      }
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Search for client by phone and password
-      final response = await _supabase
-          .from('Client')
-          .select()
-          .eq('phone', _phoneController.text.trim())
-          .eq('password', _passwordController.text.trim())
-          .single();
+      Map<String, dynamic> result;
 
-      if (response != null) {
-        // Login successful - navigate to /menu
+      if (_isClient) {
+        result = await _authService.signInClient(
+          phone: _phoneController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.clientMenu);
-      }
-
-    } on PostgrestException catch (e) {
-      String errorMessage = 'Login error';
-
-      if (e.code == 'PGRST116') {
-        errorMessage = 'Invalid phone number or password';
       } else {
-        errorMessage = e.message;
-      }
+        result = await _authService.signInCollaborateur(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+        if (!mounted) return;
 
-      _showSnackBar(errorMessage);
+        final role = result['userRole'] as UserRole?;
+        switch (role) {
+          case UserRole.gerant:
+            Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
+            break;
+          case UserRole.coordinateur:
+            Navigator.pushReplacementNamed(context, AppRoutes.coordinateurHome);
+            break;
+          case UserRole.livreur:
+            Navigator.pushReplacementNamed(context, AppRoutes.livreurHome);
+            break;
+          default:
+            Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
+        }
+      }
     } catch (e) {
-      _showSnackBar('Unexpected error: $e');
+      _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: message.contains('successful') ? Colors.green : Colors.red,
-        duration: Duration(seconds: 3),
+        content: Text(message),
+        backgroundColor: message.contains('succès') || message.contains('réussi')
+            ? Colors.green
+            : Colors.red,
       ),
     );
   }
@@ -86,33 +99,28 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image Layer
           Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/images/group55.png'),
                 fit: BoxFit.cover,
               ),
             ),
           ),
-
-          // Grey Overlay with Food Pattern
           Container(
             width: double.infinity,
             height: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFF2B2B2B).withOpacity(0.85),
-              image: DecorationImage(
+              image: const DecorationImage(
                 image: AssetImage('assets/images/group55.png'),
                 fit: BoxFit.cover,
                 opacity: 0.1,
               ),
             ),
           ),
-
-          // Content
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
@@ -121,130 +129,135 @@ class _SignInScreenState extends State<SignInScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 80),
-
-                    // Sign In Title
                     const Text(
-                      'Sign In',
+                      'Connexion',
                       style: TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFF6B35),
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
-                    // Welcome Text
                     const Text(
-                      'Welcome Back',
+                      'Bienvenue',
                       style: TextStyle(
                         fontSize: 28,
                         color: Colors.white,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
+                    const SizedBox(height: 40),
 
-                    const SizedBox(height: 60),
-
-                    // Phone Input
+                    // User Type Toggle
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF3D3D5C),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Phone Number',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isClient = true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: _isClient ? const Color(0xFFFF6B35) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Client',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isClient = false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: !_isClient ? const Color(0xFFFF6B35) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Équipe',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          prefixIcon: Icon(Icons.phone, color: Color(0xFF7C7C8D)),
-                        ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 30),
+
+                    if (_isClient)
+                      _buildTextField(
+                        controller: _phoneController,
+                        hint: 'Numéro de téléphone',
+                        icon: Icons.phone,
+                        keyboardType: TextInputType.phone,
+                      ),
+
+                    if (!_isClient)
+                      _buildTextField(
+                        controller: _emailController,
+                        hint: 'Email',
+                        icon: Icons.email,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
 
                     const SizedBox(height: 20),
 
-                    // Password Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3D3D5C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF7C7C8D),
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          prefixIcon: Icon(Icons.lock, color: Color(0xFF7C7C8D)),
-                        ),
-                      ),
+                    _buildTextField(
+                      controller: _passwordController,
+                      hint: 'Mot de passe',
+                      icon: Icons.lock,
+                      obscureText: true,
                     ),
-
                     const SizedBox(height: 16),
 
-                    // Remember Me Checkbox
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _rememberMe = !_rememberMe;
-                            });
-                          },
+                          onTap: () => setState(() => _rememberMe = !_rememberMe),
                           child: Container(
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _rememberMe
-                                  ? const Color(0xFFFF6B35)
-                                  : Colors.transparent,
-                              border: Border.all(
-                                color: const Color(0xFFFF6B35),
-                                width: 2,
-                              ),
+                              color: _rememberMe ? const Color(0xFFFF6B35) : Colors.transparent,
+                              border: Border.all(color: const Color(0xFFFF6B35), width: 2),
                             ),
+                            child: _rememberMe
+                                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 12),
                         const Text(
-                          'Remember me',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
+                          'Se souvenir de moi',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 40),
 
-                    const SizedBox(height: 60),
-
-                    // Sign In Button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _signInWithPhoneAndPassword,
+                        onPressed: _isLoading ? null : _handleSignIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B35),
                           shape: RoundedRectangleBorder(
@@ -254,15 +267,15 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 24,
+                          height: 24,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
                           ),
                         )
                             : const Text(
-                          'Sign In',
+                          'Se connecter',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -271,47 +284,34 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24),
 
-                    // Don't Have an Account
                     GestureDetector(
-                      onTap: _isLoading
-                          ? null
-                          : () {
+                      onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                          builder: (context) => const SignUpScreen(),
+                            builder: (context) => SignUpPage(initialIsClient: _isClient),
                           ),
                         );
                       },
-                      child: Text(
-                        "Don't have an account?",
+                      child: const Text(
+                        "Créer un compte",
                         style: TextStyle(
-                          color: _isLoading ? Colors.grey : Colors.white,
+                          color: Colors.white,
                           fontSize: 16,
                           decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Forgot Password
-                    GestureDetector(
-                      onTap: _isLoading ? null : () {
-                        _showSnackBar('Please contact support to reset your password');
-                      },
-                      child: Text(
-                        'Forgot password?',
-                        style: TextStyle(
-                          color: _isLoading ? Colors.grey : Color(0xFF7C7C8D),
-                          fontSize: 14,
-                        ),
+                    const Text(
+                      'Mot de passe oublié ?',
+                      style: TextStyle(
+                        color: Color(0xFF7C7C8D),
+                        fontSize: 14,
                       ),
                     ),
-
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -319,6 +319,35 @@ class _SignInScreenState extends State<SignInScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D3D5C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF7C7C8D), fontSize: 16),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          prefixIcon: Icon(icon, color: const Color(0xFF7C7C8D)),
+        ),
       ),
     );
   }

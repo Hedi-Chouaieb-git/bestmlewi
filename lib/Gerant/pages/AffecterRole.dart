@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/role_service.dart';
-import '../models/Collaborator.dart';
-import '../models/Sales Point.dart';
+import '../../models/collaborator.dart';
+import '../../models/sales_point.dart';
 import 'package:supabase_app/Routes/app_routes.dart';
 
 class AffecterRolePage extends StatefulWidget {
@@ -52,12 +52,12 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
 
         // Set default selected user if available and load their current data
         if (_collaborators.isNotEmpty && selectedUserId == null) {
-          selectedUserId = _collaborators.first.id;
+          selectedUserId = _collaborators.first.idCollab;
           _updateDropdownsForSelectedCollaborator(_collaborators.first);
         } else if (selectedUserId != null) {
           // Reload current collaborator's data
           final selectedCollab = _collaborators.firstWhere(
-            (c) => c.id == selectedUserId,
+            (c) => c.idCollab == selectedUserId,
             orElse: () => _collaborators.first,
           );
           _updateDropdownsForSelectedCollaborator(selectedCollab);
@@ -421,13 +421,13 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
           ),
           items: _collaborators
               .map((collab) => DropdownMenuItem(
-                    value: collab.id,
+                    value: collab.idCollab,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          collab.name,
+                          collab.fullName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -452,7 +452,7 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
           onChanged: (val) {
             if (val != null) {
               final selectedCollab = _collaborators.firstWhere(
-                (c) => c.id == val,
+                (c) => c.idCollab == val,
               );
               setState(() {
                 selectedUserId = val;
@@ -586,7 +586,7 @@ class _AffecterRolePageState extends State<AffecterRolePage> {
                       fontFamily: 'Montserrat',
                     ),
                   ),
-                )),
+                )).where((item) => item.value != null),
           ],
           dropdownColor: const Color(0xFF424242),
           icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFFF6B35), size: 32),

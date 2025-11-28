@@ -1,27 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/Routes/app_routes.dart';
+import '../../services/cart_service.dart';
+import '../../models/cart_item.dart' as models;
 
 import '../widgets/nav_bar.dart';
 import 'PaymentPage.dart';
-
-// Cart Item Model
-class CartItem {
-  final String id;
-  final String name;
-  final String image;
-  final List<String> description;
-  int quantity;
-  final double price;
-
-  CartItem({
-    required this.id,
-    required this.name,
-    required this.image,
-    required this.description,
-    required this.quantity,
-    required this.price,
-  });
-}
 
 // Cart Screen
 class ClientCartScreen extends StatefulWidget {
@@ -32,58 +15,53 @@ class ClientCartScreen extends StatefulWidget {
 }
 
 class _ClientCartScreenState extends State<ClientCartScreen> {
-  // Sample cart items
-  List<CartItem> cartItems = [
-    CartItem(
-      id: '1',
-      name: 'Shawarma Wrap',
-      image: 'assets/images/shwarma.jpeg',
-      description: [
-        'Lorem ipsum dolor sit amet',
-        'Ut wisi enim ad',
-        'Lor in hendrerit in vu',
-        'Accumsan et iusto odio d',
-      ],
-      quantity: 5,
-      price: 250.0,
-    ),
-    CartItem(
-      id: '2',
-      name: 'Crepe',
-      image: 'assets/images/mlawi.jpeg',
-      description: [
-        'Lorem ipsum dolor sit amet',
-        'Ut wisi enim ad',
-        'Lor in hendrerit in vu',
-        'Accumsan et iusto odio d',
-      ],
-      quantity: 2,
-      price: 180.0,
-    ),
-  ];
+  final CartService _cartService = CartService();
+  List<models.CartItem> cartItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCart();
+    _cartService.addListener(_onCartChanged);
+  }
+
+  @override
+  void dispose() {
+    _cartService.removeListener(_onCartChanged);
+    super.dispose();
+  }
+
+  void _onCartChanged(List<models.CartItem> items) {
+    setState(() {
+      cartItems = items;
+    });
+  }
+
+  Future<void> _loadCart() async {
+    await _cartService.loadCart();
+    setState(() {
+      cartItems = _cartService.items;
+    });
+  }
 
   double get totalPrice {
-    return cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    return cartItems.fold(0.0, (sum, item) => sum + item.total);
   }
 
-  void incrementQuantity(int index) {
-    setState(() {
-      cartItems[index].quantity++;
-    });
+  Future<void> incrementQuantity(String itemId) async {
+    final item = cartItems.firstWhere((i) => i.id == itemId);
+    await _cartService.updateQuantity(itemId, item.quantity + 1);
   }
 
-  void decrementQuantity(int index) {
-    setState(() {
-      if (cartItems[index].quantity > 1) {
-        cartItems[index].quantity--;
-      }
-    });
+  Future<void> decrementQuantity(String itemId) async {
+    final item = cartItems.firstWhere((i) => i.id == itemId);
+    if (item.quantity > 1) {
+      await _cartService.updateQuantity(itemId, item.quantity - 1);
+    }
   }
 
-  void removeItem(int index) {
-    setState(() {
-      cartItems.removeAt(index);
-    });
+  Future<void> removeItem(String itemId) async {
+    await _cartService.removeItem(itemId);
   }
 
   @override
@@ -152,201 +130,208 @@ class _ClientCartScreenState extends State<ClientCartScreen> {
 
               // Cart Items List
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: cartItems.length,
-                  itemBuilder: (context, index) {
-                    final item = cartItems[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF424242),
-                          borderRadius: BorderRadius.circular(16),
+                child: cartItems.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Votre panier est vide',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Food Image
-                            Container(
-                              width: 100,
-                              height: 100,
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: cartItems.length,
+                        itemBuilder: (context, index) {
+                          final item = cartItems[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFF6B35),
-                                  width: 4,
-                                ),
+                                color: const Color(0xFF424242),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: ClipOval(
-                                child: Image.asset(
-                                  item.image,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(width: 16),
-
-                            // Item Details
-                            Expanded(
-                              child: Column(
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Description bullets
-                                  ...item.description.map((desc) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Row(
+                                  // Food Image
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFFF6B35),
+                                        width: 4,
+                                      ),
+                                    ),
+                                    child: ClipOval(
+                                      child: Image.asset(
+                                        item.image,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(Icons.fastfood, color: Colors.white);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 16),
+
+                                  // Item Details
+                                  Expanded(
+                                    child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          '• ',
-                                          style: TextStyle(
+                                        Text(
+                                          item.name,
+                                          style: const TextStyle(
                                             color: Colors.white,
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Expanded(
-                                          child: Text(
-                                            desc,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
+                                        if (item.description != null && item.description!.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              item.description!,
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  )).toList(),
+                                        const SizedBox(height: 12),
 
-                                  const SizedBox(height: 12),
-
-                                  // Action Buttons Row
-                                  Row(
-                                    children: [
-                                      // Quantity Control
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFF6B35),
-                                          borderRadius: BorderRadius.circular(25),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
+                                        // Action Buttons Row
+                                        Row(
                                           children: [
-                                            const Icon(
-                                              Icons.shopping_cart,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              '${item.quantity}',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            GestureDetector(
-                                              onTap: () => incrementQuantity(index),
-                                              child: const Icon(
-                                                Icons.add,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
+                                            // Quantity Control
                                             Container(
-                                              width: 1,
-                                              height: 16,
-                                              color: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 8,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFF6B35),
+                                                borderRadius: BorderRadius.circular(25),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.shopping_cart,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '${item.quantity}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 20,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  GestureDetector(
+                                                    onTap: () => incrementQuantity(item.id),
+                                                    child: const Icon(
+                                                      Icons.add,
+                                                      color: Colors.white,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    width: 1,
+                                                    height: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  GestureDetector(
+                                                    onTap: () => decrementQuantity(item.id),
+                                                    child: const Icon(
+                                                      Icons.remove,
+                                                      color: Colors.white,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                            const SizedBox(width: 8),
+
+                                            const SizedBox(width: 12),
+
+                                            // Delete Button
                                             GestureDetector(
-                                              onTap: () => decrementQuantity(index),
-                                              child: const Icon(
-                                                Icons.remove,
-                                                color: Colors.white,
-                                                size: 20,
+                                              onTap: () => removeItem(item.id),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFF6B35),
+                                                  borderRadius: BorderRadius.circular(25),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: Colors.white,
+                                                  size: 24,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
-
-                                      const SizedBox(width: 12),
-
-                                      // Delete Button
-                                      GestureDetector(
-                                        onTap: () => removeItem(index),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFF6B35),
-                                            borderRadius: BorderRadius.circular(25),
-                                          ),
-                                          child: const Icon(
-                                            Icons.delete_outline,
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
 
               // Order Button
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PaymentPage(total: totalPrice),
+              if (cartItems.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PaymentPage(total: totalPrice),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF424242),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF424242),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'COMMANDER',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF6B35),
-                        letterSpacing: 1,
+                      child: const Text(
+                        'COMMANDER',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF6B35),
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
               // Bottom Navigation Bar
               const NavBar(currentPage: AppRoutes.clientCart),

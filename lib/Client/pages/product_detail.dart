@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/cart_service.dart';
+import '../../models/cart_item.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final dynamic product;
@@ -156,11 +158,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25)),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Commande enregistrée !")),
+                onPressed: () async {
+                  final cartService = CartService();
+                  final cartItem = CartItem(
+                    id: widget.product.id,
+                    name: widget.product.name,
+                    image: widget.product.image,
+                    description: widget.product.description.join(', '),
+                    quantity: quantity,
+                    price: widget.product.price,
+                    category: widget.product.category ?? '',
                   );
+                  await cartService.addItem(cartItem);
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Article ajouté au panier !"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 },
                 child: const Text(
                   "Ajouter au panier",

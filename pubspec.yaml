@@ -19,6 +19,7 @@ dependencies:
   flutter_google_places_sdk: ^0.4.2+1
   flutter_typeahead: ^4.1.1
   intl: ^0.19.0
+  shared_preferences: ^2.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

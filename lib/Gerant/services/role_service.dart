@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/Collaborator.dart';
-import '../models/Sales Point.dart';
+import '../../models/collaborator.dart';
+import '../../models/sales_point.dart';
 
 class RoleService {
   RoleService({SupabaseClient? client})
@@ -12,18 +12,12 @@ class RoleService {
   Future<List<Collaborator>> fetchCollaborators() async {
     try {
       final response = await _client
-          .from('collaborators')
-          .select('id, name, role, image, sales_point_id')
-          .order('name');
+          .from('Collaborateurs')
+          .select('idCollab, nom, prenom, email, role, disponible, telephone, salesPointId')
+          .order('nom');
 
       final rows = List<Map<String, dynamic>>.from(response);
-      return rows.map((row) => Collaborator(
-            id: row['id'] as String? ?? '',
-            name: row['name'] as String? ?? 'Unknown',
-            role: row['role'] as String? ?? '',
-            image: row['image'] as String? ?? '',
-            salesPointId: row['sales_point_id'] as String?,
-          )).toList();
+      return rows.map((row) => Collaborator.fromJson(row)).toList();
     } catch (e) {
       // If table doesn't exist, return empty list
       return [];
@@ -63,12 +57,7 @@ class RoleService {
           .order('title');
 
       final rows = List<Map<String, dynamic>>.from(response);
-      return rows.map((row) => SalesPoint(
-            id: row['id'] as String? ?? '',
-            title: row['title'] as String? ?? 'Unknown',
-            status: row['status'] as String? ?? 'CLOSED',
-            collaborators: row['collaborators'] as String? ?? '',
-          )).toList();
+      return rows.map((row) => SalesPoint.fromJson(row)).toList();
     } catch (e) {
       // If table doesn't exist, return empty list
       return [];
@@ -84,13 +73,13 @@ class RoleService {
     try {
       // Update the collaborator's role
       await _client
-          .from('collaborators')
+          .from('Collaborateurs')
           .update({
             'role': role,
-            if (salesPointId != null) 'sales_point_id': salesPointId,
+            if (salesPointId != null) 'salesPointId': salesPointId,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', collaboratorId);
+          .eq('idCollab', collaboratorId);
 
       // If sales point is provided, also update the sales_point_collaborators junction table
       if (salesPointId != null) {
@@ -126,20 +115,14 @@ class RoleService {
   Future<Collaborator?> getCollaborator(String id) async {
     try {
       final response = await _client
-          .from('collaborators')
-          .select('id, name, role, image, sales_point_id')
-          .eq('id', id)
+          .from('Collaborateurs')
+          .select('idCollab, nom, prenom, email, role, disponible, telephone, salesPointId')
+          .eq('idCollab', id)
           .maybeSingle();
 
       if (response == null) return null;
 
-      return Collaborator(
-        id: response['id'] as String? ?? '',
-        name: response['name'] as String? ?? 'Unknown',
-        role: response['role'] as String? ?? '',
-        image: response['image'] as String? ?? '',
-        salesPointId: response['sales_point_id'] as String?,
-      );
+      return Collaborator.fromJson(response);
     } catch (e) {
       return null;
     }

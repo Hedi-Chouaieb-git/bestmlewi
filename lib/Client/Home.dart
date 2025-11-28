@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_app/Routes/app_routes.dart';
+import 'package:supabase_app/services/auth_service.dart';
 import 'widgets/nav_bar.dart';
 
 class ClientHomePage extends StatefulWidget {
@@ -27,14 +28,15 @@ class _ClientHomePageState extends State<ClientHomePage> {
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
     try {
-      final response = await supabase.from('Client').select('name,favorite').limit(1);
+      final response = await supabase.from('Client').select('nom, prenom, favorite').limit(1);
       final rows = List<Map<String, dynamic>>.from(response);
       if (rows.isNotEmpty) {
         final data = rows.first;
         setState(() {
-          _customerName = (data['name'] as String?)?.trim().isNotEmpty == true
-              ? data['name'] as String
-              : _customerName;
+          final nom = data['nom'] as String? ?? '';
+          final prenom = data['prenom'] as String? ?? '';
+          final fullName = '$prenom $nom'.trim();
+          _customerName = fullName.isNotEmpty ? fullName : _customerName;
           _favoriteCategory = (data['favorite'] as String?)?.trim().isNotEmpty == true
               ? data['favorite'] as String
               : _favoriteCategory;
@@ -80,6 +82,14 @@ class _ClientHomePageState extends State<ClientHomePage> {
     );
   }
 
+  Future<void> _logout() async {
+    final authService = AuthService();
+    await authService.signOut();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
+    }
+  }
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
@@ -113,9 +123,18 @@ class _ClientHomePageState extends State<ClientHomePage> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: _loadProfile,
-            icon: const Icon(Icons.refresh, color: Colors.white),
+          Row(
+            children: [
+              IconButton(
+                onPressed: _loadProfile,
+                icon: const Icon(Icons.refresh, color: Colors.white),
+              ),
+              IconButton(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout, color: Colors.white),
+                tooltip: 'Se déconnecter',
+              ),
+            ],
           ),
         ],
       ),
@@ -123,51 +142,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
   }
 
   Widget _buildActiveOrderCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF424242),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFFF6B35).withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFF6B35),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.delivery_dining, color: Colors.white, size: 30),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Commande en cours',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Livreur Youssef arrive dans 12 min',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.clientCart),
-              icon: const Icon(Icons.arrow_forward_ios, color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
+    // For now, don't show the active order card since we can't properly track current client orders
+    // This would need proper authentication state management to work correctly
+    return const SizedBox.shrink();
   }
 
   Widget _buildQuickActions() {

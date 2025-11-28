@@ -30,7 +30,7 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
     try {
       final response = await supabase
           .from('Commande')
-          .select('idCommande, statut, dateCommande, Client(nom, adresse)')
+          .select('idCommande, statut, dateCommande, montantTotal, adresseLivraison, Client(idClient, nom, prenom, phone, adresse)')
           .order('dateCommande', ascending: false)
           .limit(12);
       setState(() {

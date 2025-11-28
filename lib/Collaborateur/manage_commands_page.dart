@@ -38,7 +38,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
     try {
       final response = await supabase
           .from('Commande')
-          .select('*, Client(nom, adresse), Collaborateurs(nom, prenom, disponible)')
+          .select('*, Client(idClient, nom, prenom, phone, adresse), Collaborateurs(idCollab, nom, prenom, role, disponible)')
           .order('dateCommande', ascending: false);
 
       setState(() {

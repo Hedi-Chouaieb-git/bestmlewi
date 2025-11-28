@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_app/Gerant/pages/Dashboard.dart';
 
-// Auth
-import '../Auth/signin_page.dart';
-import '../Auth/signup_page.dart';
+// Unified Auth
+import '../auth/signin_page.dart';
+import '../auth/signup_page.dart';
 
 // Client
 import '../Client/Home.dart';
@@ -21,26 +20,24 @@ import '../Gerant/pages/menu.dart';
 import '../Gerant/pages/order.dart';
 import '../Gerant/pages/sales point.dart';
 import '../Gerant/pages/traking.dart';
-import '../Gerant/pages/auth/signin_page.dart';
-import '../Gerant/pages/auth/signup_page.dart';
 
 // Livreur
 import '../Collaborateur/Livreur/Home.dart';
 
+// Coordinateur
+import '../Collaborateur/Cordinateur/Home.dart';
+
 class AppRoutes {
-  // Public auth
+  // Unified Auth
   static const String signIn = '/signin';
   static const String signUp = '/signup';
-  static const String dashboard = '/dashboard';
 
   // Client
   static const String clientHome = '/client/home';
   static const String clientMenu = '/client/menu';
   static const String clientCart = '/client/cart';
 
-  // Gerant auth + dashboard
-  static const String gerantSignIn = '/gerant/signIn';
-  static const String gerantSignUp = '/gerant/signup';
+  // Gerant
   static const String gerantDashboard = '/gerant/dashboard';
   static const String gerantMenu = '/gerant/menu';
   static const String gerantCart = '/gerant/cart';
@@ -55,22 +52,21 @@ class AppRoutes {
   // Livreur
   static const String livreurHome = '/livreur/home';
 
+  // Coordinateur
+  static const String coordinateurHome = '/coordinateur/home';
+
   static Map<String, WidgetBuilder> routes = {
-    // Auth
-    signIn: (context) => const SignInScreen(),
-    signUp: (context) => const SignUpScreen(),
-    dashboard: (context) =>  DashboardPage(),
+    // Unified Auth
+    signIn: (context) => const SignInPage(),
+    signUp: (context) => const SignUpPage(),
 
     // Client
     clientHome: (context) => const ClientHomePage(),
     clientMenu: (context) => const ClientMenuPage(),
     clientCart: (context) => const ClientCartScreen(),
 
-    // Gerant auth + dashboard
-    gerantSignIn: (context) => const GerantSignInScreen(),
-    gerantSignUp: (context) => const GerantSignUpScreen(),
+    // Gerant
     gerantDashboard: (context) => const DashboardPage(),
-    gerantMenu: (context) => const GerantMenuPage(),
     gerantCart: (context) => const GerantCartScreen(),
     gerantOrders: (context) => const OrderDetailsPage(),
     gerantTracking: (context) => const OrderTrackingPage(),
@@ -82,5 +78,8 @@ class AppRoutes {
 
     // Livreur
     livreurHome: (context) => const LivreurHomePage(),
+
+    // Coordinateur
+    coordinateurHome: (context) => const CoordinatorHomePage(),
   };
 }

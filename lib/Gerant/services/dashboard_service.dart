@@ -118,15 +118,31 @@ class DashboardService {
       final now = DateTime.now().toUtc();
       final startOfDay = DateTime.utc(now.year, now.month, now.day);
 
+      // Use Commande table instead of orders
       final orderRows = await _client
-          .from('orders')
-          .select('status,total_amount,created_at')
-          .gte('created_at', startOfDay.toIso8601String());
+          .from('Commande')
+          .select('statut, montantTotal, dateCommande')
+          .gte('dateCommande', startOfDay.toIso8601String());
 
-      final openSalesPointsRows = await _client
-          .from('sales_points')
-          .select('id')
-          .eq('is_open', true);
+      // Try both table names for sales points
+      List<Map<String, dynamic>> openSalesPoints = [];
+      try {
+        final salesPointsRows = await _client
+            .from('PointDeVente')
+            .select('idPoint')
+            .eq('ouvert', true);
+        openSalesPoints = List<Map<String, dynamic>>.from(salesPointsRows);
+      } catch (e) {
+        try {
+          final salesPointsRows = await _client
+              .from('sales_points')
+              .select('id')
+              .eq('is_open', true);
+          openSalesPoints = List<Map<String, dynamic>>.from(salesPointsRows);
+        } catch (e2) {
+          // Table doesn't exist, use empty list
+        }
+      }
 
       final alertRows = await _client
           .from('alerts')
@@ -135,18 +151,17 @@ class DashboardService {
           .limit(5);
 
       final orders = List<Map<String, dynamic>>.from(orderRows);
-      final openSalesPoints = List<Map<String, dynamic>>.from(openSalesPointsRows);
       final alerts = List<Map<String, dynamic>>.from(alertRows)
           .map(DashboardAlert.fromJson)
           .toList();
 
       final deliveries = orders.where((order) {
-        final status = (order['status'] as String?)?.toLowerCase();
+        final status = (order['statut'] as String?)?.toLowerCase();
         return status == 'delivered' || status == 'livree';
       }).length;
 
       final revenue = orders.fold<double>(0, (acc, order) {
-        final amount = order['total_amount'];
+        final amount = order['montantTotal'];
         if (amount is num) {
           return acc + amount.toDouble();
         }

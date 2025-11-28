@@ -70,7 +70,7 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
       // Get recent commands
       final recentData = await supabase
           .from('Commande')
-          .select('*, Client(nom), Collaborateurs(nom, prenom)')
+          .select('*, Client(idClient, nom, prenom, phone, adresse), Collaborateurs(idCollab, nom, prenom, role)')
           .order('dateCommande', ascending: false)
           .limit(5);
 
