@@ -1,26 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/Client/pages/product_detail.dart';
 import 'package:supabase_app/Routes/app_routes.dart';
+import '../../Gerant/services/product_service.dart';
+import '../../models/product.dart';
+import '../../services/cart_service.dart';
+import '../../models/cart_item.dart';
 
 import '../widgets/nav_bar.dart';
-
-class Product {
-  final String id;
-  final String name;
-  final String image;
-  final List<String> description;
-  final double price;
-  final String category;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.image,
-    required this.description,
-    required this.price,
-    required this.category,
-  });
-}
 
 class ClientMenuPage extends StatefulWidget {
   const ClientMenuPage({super.key});
@@ -31,50 +17,54 @@ class ClientMenuPage extends StatefulWidget {
 
 class _ClientMenuPageState extends State<ClientMenuPage> {
   final TextEditingController _searchController = TextEditingController();
-  String selectedCategory = 'mlawi';
+  final ProductService _productService = ProductService();
+  final CartService _cartService = CartService();
+  String selectedCategory = 'Plat Principal';
   String searchQuery = '';
+  List<Product> allProducts = [];
+  List<String> categories = [];
+  bool _isLoading = true;
 
-  final List<Product> allProducts = [
-    Product(
-      id: '1',
-      name: 'Shawarma Wrap',
-      image: 'assets/images/shwarma.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 250.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '2',
-      name: 'Crepe',
-      image: 'assets/images/mlawi.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 180.0,
-      category: 'mlawi',
-    ),
-    Product(
-      id: '3',
-      name: 'Fresh Juice',
-      image: 'assets/images/jus.jpeg',
-      description: [
-        'orem ipsum dolor sit amet',
-        'utpat Ut wisi enim ad',
-        'lor in hendrerit in vu',
-        'accumsan et iusto odio d',
-      ],
-      price: 120.0,
-      category: 'jus',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+    _loadCategories();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await _productService.fetchProducts();
+      setState(() {
+        allProducts = products;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur chargement produits: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await _productService.fetchCategories();
+      setState(() {
+        categories = cats;
+        if (categories.isNotEmpty && !categories.contains(selectedCategory)) {
+          selectedCategory = categories.first;
+        }
+      });
+    } catch (e) {
+      // Use default categories if loading fails
+      setState(() {
+        categories = ['Plat Principal', 'Boisson', 'Dessert', 'Entrée'];
+      });
+    }
+  }
 
   List<Product> get filteredProducts {
     return allProducts.where((p) {
@@ -143,21 +133,55 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
   }
 
   Widget _buildCategoryRow() {
+    if (categories.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            _buildCategoryChip('Plat Principal'),
+            const SizedBox(width: 12),
+            _buildCategoryChip('Boisson'),
+            const SizedBox(width: 12),
+            _buildCategoryChip('Dessert'),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          _buildCategoryChip('mlawi'),
-          const SizedBox(width: 12),
-          _buildCategoryChip('jus'),
-          const SizedBox(width: 12),
-          _buildCategoryChip('supplement'),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: categories.map((category) {
+            return Row(
+              children: [
+                _buildCategoryChip(category),
+                const SizedBox(width: 12),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
   Widget _buildProductsList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF6B35)),
+      );
+    }
+
+    if (filteredProducts.isEmpty) {
+      return const Center(
+        child: Text(
+          'Aucun produit trouvé',
+          style: TextStyle(color: Colors.white70, fontSize: 18),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: filteredProducts.length,
@@ -208,15 +232,37 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                     Positioned(
                       top: 4,
                       right: 4,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: const BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
+                      child: GestureDetector(
+                        onTap: () async {
+                          final cartItem = CartItem(
+                            id: product.id,
+                            name: product.name,
+                            image: product.image,
+                            price: product.price,
+                            quantity: 1,
+                            description: product.description.isNotEmpty ? product.description[0] : '',
+                            category: product.category,
+                          );
+                          await _cartService.addItem(cartItem);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${product.name} ajouté au panier'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: const BoxDecoration(
+                            color: Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.add,
+                              size: 18, color: Colors.white),
                         ),
-                        child: const Icon(Icons.add,
-                            size: 18, color: Colors.white),
                       ),
                     ),
                   ],
@@ -237,7 +283,7 @@ class _ClientMenuPageState extends State<ClientMenuPage> {
                       const SizedBox(height: 6),
 
                       Text(
-                        product.description[0],
+                        product.description.isNotEmpty ? product.description[0] : 'Aucune description disponible',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

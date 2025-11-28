@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../models/order.dart';
 import '../../models/collaborator.dart';
+import '../../services/order_service.dart';
 import '../../Routes/app_routes.dart';
 
 class GerantOrderManagementPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class GerantOrderManagementPage extends StatefulWidget {
 }
 
 class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
+  final OrderService _orderService = OrderService();
   final supabase = Supabase.instance.client;
   List<Order> _orders = [];
   bool _isLoading = true;
@@ -27,14 +29,7 @@ class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
   Future<void> _loadOrders() async {
     setState(() => _isLoading = true);
     try {
-      final response = await supabase
-          .from('Commande')
-          .select('*, Client(idClient, nom, prenom, phone, adresse)')
-          .order('dateCommande', ascending: false);
-
-      final orders = List<Map<String, dynamic>>.from(response)
-          .map((json) => Order.fromJson(json))
-          .toList();
+      final orders = await _orderService.fetchAllOrders();
 
       setState(() {
         _orders = orders;
@@ -52,11 +47,7 @@ class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
 
   Future<void> _updateOrderStatus(String orderId, String newStatus) async {
     try {
-      await supabase
-          .from('Commande')
-          .update({'statut': newStatus})
-          .eq('idCommande', orderId);
-
+      await _orderService.updateOrderStatus(orderId: orderId, newStatus: newStatus);
       await _loadOrders();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -336,6 +327,8 @@ class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
   }
 
   void _showRejectDialog(Order order) {
+    final reasonController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -344,9 +337,33 @@ class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
           'Rejeter la commande',
           style: TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'Êtes-vous sûr de vouloir rejeter cette commande ?',
-          style: TextStyle(color: Colors.white70),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Veuillez indiquer la raison du rejet :',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Raison du rejet...',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: const Color(0xFF424242),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.red),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -354,9 +371,33 @@ class _GerantOrderManagementPageState extends State<GerantOrderManagementPage> {
             child: const Text('Annuler'),
           ),
           ElevatedButton(
-            onPressed: () {
-              _updateOrderStatus(order.idCommande, 'rejete');
-              Navigator.pop(context);
+            onPressed: () async {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Veuillez indiquer une raison')),
+                );
+                return;
+              }
+
+              try {
+                await _orderService.rejectOrder(order.idCommande, reasonController.text.trim());
+                await _loadOrders();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Commande rejetée et demande de remboursement créée'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+                Navigator.pop(context);
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: $e')),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Rejeter'),

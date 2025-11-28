@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_app/services/auth_service.dart';
+import '../../services/order_service.dart';
+import '../../services/cart_service.dart';
+import '../../models/cart_item.dart' as models;
 
 class PaymentPage extends StatefulWidget {
   final double total;
@@ -21,6 +24,12 @@ class _PaymentPageState extends State<PaymentPage> {
   String? _savedAddress;
 
   final AuthService _authService = AuthService();
+  final OrderService _orderService = OrderService();
+  final CartService _cartService = CartService();
+
+  // Coupon system
+  Map<String, double> _availableCoupons = {};
+  bool _isValidatingCoupon = false;
 
   @override
   void initState() {
@@ -204,21 +213,19 @@ class _PaymentPageState extends State<PaymentPage> {
                 const SizedBox(width: 10),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: _isValidatingCoupon ? Colors.grey : Colors.orange,
                   ),
-                  onPressed: () {
-                    if (couponCtrl.text == "FOOD10") {
-                      setState(() => discount = widget.total * 0.1);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Coupon appliqué (-10%)")),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Coupon invalide")),
-                      );
-                    }
-                  },
-                  child: const Text("OK"),
+                  onPressed: _isValidatingCoupon ? null : () => _validateCoupon(couponCtrl.text),
+                  child: _isValidatingCoupon
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text("OK"),
                 ),
               ],
             ),
@@ -248,16 +255,54 @@ class _PaymentPageState extends State<PaymentPage> {
                     borderRadius: BorderRadius.circular(25),
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (selectedAddress.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Veuillez sélectionner une adresse")),
                     );
                     return;
                   }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Paiement effectué ✔")),
-                  );
+
+                  try {
+                    // Get cart items
+                    await _cartService.loadCart();
+                    final cartItems = _cartService.items;
+
+                    if (cartItems.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Votre panier est vide")),
+                      );
+                      return;
+                    }
+
+                    // Create the order
+                    final order = await _orderService.createOrder(
+                      idClient: widget.clientId ?? 'CLI001', // Default to CLI001 if not provided
+                      items: cartItems,
+                      montantTotal: finalTotal,
+                      adresseLivraison: selectedAddress,
+                      notes: 'Paiement: $selectedPayment',
+                    );
+
+                    // Clear the cart
+                    await _cartService.clearCart();
+
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Commande créée avec succès! ID: ${order.idCommande}"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+
+                    // Navigate back to home or order tracking
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Erreur lors de la création de la commande: $e")),
+                    );
+                  }
                 },
                 child: const Text(
                   "Payer maintenant",
@@ -321,5 +366,60 @@ class _PaymentPageState extends State<PaymentPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _validateCoupon(String couponCode) async {
+    if (couponCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez entrer un code coupon")),
+      );
+      return;
+    }
+
+    setState(() => _isValidatingCoupon = true);
+
+    try {
+      // For now, we'll use a simple coupon system
+      // In a real app, this would query a coupons table in the database
+      final validCoupons = {
+        'FOOD10': {'discount': 0.10, 'description': '10% de réduction'},
+        'WELCOME15': {'discount': 0.15, 'description': '15% pour les nouveaux clients'},
+        'SPECIAL20': {'discount': 0.20, 'description': '20% de réduction spéciale'},
+        'SUMMER25': {'discount': 0.25, 'description': '25% été'},
+      };
+
+      if (validCoupons.containsKey(couponCode.toUpperCase())) {
+        final couponData = validCoupons[couponCode.toUpperCase()]!;
+        final discountPercent = couponData['discount'] as double;
+        final discountAmount = widget.total * discountPercent;
+
+        setState(() {
+          discount = discountAmount;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("${couponData['description']} appliqué (-${discountAmount.toStringAsFixed(2)} DT)"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Coupon invalide"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erreur lors de la validation: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isValidatingCoupon = false);
+    }
   }
 }

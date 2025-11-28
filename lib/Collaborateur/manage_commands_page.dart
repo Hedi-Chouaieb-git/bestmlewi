@@ -5,6 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../services/order_service.dart';
+import '../../models/order.dart';
+import '../../models/collaborator.dart';
 //import 'command_details_page.dart';
 
 class ManageCommandsPage extends StatefulWidget {
@@ -38,7 +41,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
     try {
       final response = await supabase
           .from('Commande')
-          .select('*, Client(idClient, nom, prenom, phone, adresse), Collaborateurs(idCollab, nom, prenom, role, disponible)')
+          .select('*, Client(idClient, nom, prenom, phone, adresse), Collaborateurs!Commande_idCollab_fkey(idCollab, nom, prenom, role, disponible)')
           .order('dateCommande', ascending: false);
 
       setState(() {

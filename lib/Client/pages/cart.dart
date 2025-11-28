@@ -309,7 +309,10 @@ class _ClientCartScreenState extends State<ClientCartScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PaymentPage(total: totalPrice),
+                            builder: (_) => PaymentPage(
+                              total: totalPrice,
+                              clientId: 'CLI001', // In a real app, this would come from authentication
+                            ),
                           ),
                         );
                       },

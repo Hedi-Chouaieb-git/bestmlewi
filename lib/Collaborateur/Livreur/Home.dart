@@ -31,26 +31,10 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
     try {
       final response = await supabase
           .from('Commande')
-          .select('idCommande, statut, dateCommande, montantTotal, adresseLivraison, idClient')
+          .select('*, Client(idClient, nom, prenom, phone, adresse)')
           .order('dateCommande', ascending: false)
           .limit(12);
 
-      // Get client data separately
-      final orders = List<Map<String, dynamic>>.from(response);
-      for (var order in orders) {
-        if (order['idClient'] != null) {
-          try {
-            final clientData = await supabase
-                .from('Client')
-                .select('idClient, nom, prenom, phone, adresse')
-                .eq('idClient', order['idClient'])
-                .single();
-            order['Client'] = clientData;
-          } catch (e) {
-            order['Client'] = null;
-          }
-        }
-      }
       setState(() {
         _deliveries = List<Map<String, dynamic>>.from(response);
       });
@@ -189,14 +173,14 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)))
                   : RefreshIndicator(
-                      color: const Color(0xFFFF6B35),
-                      onRefresh: _loadDeliveries,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: _deliveries.length,
-                        itemBuilder: (context, index) => _buildDeliveryCard(_deliveries[index]),
-                      ),
-                    ),
+                color: const Color(0xFFFF6B35),
+                onRefresh: _loadDeliveries,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _deliveries.length,
+                  itemBuilder: (context, index) => _buildDeliveryCard(_deliveries[index]),
+                ),
+              ),
             ),
           ],
         ),
@@ -295,9 +279,9 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
                     onPressed: status == 'livree'
                         ? null
                         : () => _updateStatus(
-                              delivery['idCommande'].toString(),
-                              status == 'en_cours' ? 'livree' : 'en_cours',
-                            ),
+                      delivery['idCommande'].toString(),
+                      status == 'en_cours' ? 'livree' : 'en_cours',
+                    ),
                     icon: Icon(status == 'en_cours' ? Icons.check : Icons.play_arrow),
                     label: Text(status == 'en_cours' ? 'Marquer livrée' : 'Commencer'),
                   ),

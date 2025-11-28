@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../services/order_service.dart';
+import '../../models/order.dart';
 
 class OrderTrackingPage extends StatefulWidget {
   const OrderTrackingPage({super.key});
@@ -10,29 +12,28 @@ class OrderTrackingPage extends StatefulWidget {
 }
 
 class _OrderTrackingPageState extends State<OrderTrackingPage> {
+  final OrderService _orderService = OrderService();
   final supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _orders = [];
+  List<Order> _orders = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    // Set up periodic refresh for real-time feel
+    // In a real app, you'd use proper real-time streams
   }
 
   Future<void> _loadOrders() async {
     setState(() => _isLoading = true);
     try {
       // In a real app, you'd get the current client ID from authentication
-      // For now, we'll load all orders and filter client-side
-      final response = await supabase
-          .from('Commande')
-          .select('*, Client(idClient, nom, prenom)')
-          .order('dateCommande', ascending: false)
-          .limit(20);
+      // For now, we'll load all orders (this would be client orders in production)
+      final orders = await _orderService.fetchAllOrders();
 
       setState(() {
-        _orders = List<Map<String, dynamic>>.from(response);
+        _orders = orders;
       });
     } catch (e) {
       if (mounted) {
@@ -83,11 +84,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
 
     if (confirmed == true) {
       try {
-        await supabase
-            .from('Commande')
-            .update({'statut': 'annulee'})
-            .eq('idCommande', orderId);
-
+        await _orderService.cancelOrder(orderId);
         await _loadOrders();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -232,12 +229,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
-    final client = order['Client'];
-    final status = order['statut'] ?? 'inconnu';
-    final date = order['dateCommande'] != null
-        ? DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(order['dateCommande']))
-        : 'Date inconnue';
+  Widget _buildOrderCard(Order order) {
+    final status = order.statut;
+    final date = DateFormat('dd/MM/yyyy HH:mm').format(order.dateCommande);
 
     Color statusColor;
     String statusLabel;
@@ -269,6 +263,11 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
         statusLabel = 'Annulée';
         statusIcon = Icons.cancel;
         break;
+      case 'rejete':
+        statusColor = Colors.red;
+        statusLabel = 'Rejetée';
+        statusIcon = Icons.block;
+        break;
       default:
         statusColor = Colors.grey;
         statusLabel = status;
@@ -290,7 +289,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Commande #${order['idCommande']}',
+                'Commande #${order.idCommande}',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
               Container(
@@ -317,16 +316,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             'Date: $date',
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
-          if (client != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Client: ${client['nom'] ?? 'N/A'}',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-          ],
           const SizedBox(height: 8),
           Text(
-            'Montant: ${order['montantTotal']?.toString() ?? '0'} DT',
+            'Montant: ${order.montantTotal.toStringAsFixed(2)} DT',
             style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -335,17 +327,24 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
             children: [
               if (status == 'en_attente')
                 TextButton.icon(
-                  onPressed: () => _cancelOrder(order['idCommande'], status),
+                  onPressed: () => _cancelOrder(order.idCommande, status),
                   icon: const Icon(Icons.cancel, size: 16),
                   label: const Text('Annuler'),
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
                 ),
               if (status == 'livree')
                 TextButton.icon(
-                  onPressed: () => _requestRefund(order['idCommande'], client?['idClient'] ?? ''),
+                  onPressed: () => _requestRefund(order.idCommande, order.idClient),
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('Remboursement'),
                   style: TextButton.styleFrom(foregroundColor: Color(0xFFFF6B35)),
+                ),
+              if (status == 'rejete')
+                TextButton.icon(
+                  onPressed: () => _requestRefund(order.idCommande, order.idClient),
+                  icon: const Icon(Icons.block, size: 16),
+                  label: const Text('Demander remboursement'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
                 ),
             ],
           ),

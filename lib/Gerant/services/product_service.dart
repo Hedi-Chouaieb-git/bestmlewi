@@ -11,9 +11,10 @@ class ProductService {
   Future<List<Product>> fetchProducts() async {
     try {
       final response = await _client
-          .from('products')
-          .select('id, name, image, description, price, category')
-          .order('name');
+          .from('Produit')
+          .select('idProduit, nom, image, description, prix, categorie, disponible, created_at, updated_at')
+          .eq('disponible', true)
+          .order('nom');
 
       final rows = List<Map<String, dynamic>>.from(response);
       return rows.map((row) => Product.fromJson(row)).toList();
@@ -27,10 +28,11 @@ class ProductService {
   Future<List<Product>> fetchProductsByCategory(String category) async {
     try {
       final response = await _client
-          .from('products')
-          .select('id, name, image, description, price, category')
-          .eq('category', category)
-          .order('name');
+          .from('Produit')
+          .select('idProduit, nom, image, description, prix, categorie, disponible, created_at, updated_at')
+          .eq('categorie', category)
+          .eq('disponible', true)
+          .order('nom');
 
       final rows = List<Map<String, dynamic>>.from(response);
       return rows.map((row) => Product.fromJson(row)).toList();
@@ -43,9 +45,9 @@ class ProductService {
   Future<Product?> getProduct(String id) async {
     try {
       final response = await _client
-          .from('products')
-          .select('id, name, image, description, price, category')
-          .eq('id', id)
+          .from('Produit')
+          .select('idProduit, nom, image, description, prix, categorie, disponible, created_at, updated_at')
+          .eq('idProduit', id)
           .maybeSingle();
 
       if (response == null) return null;
@@ -59,19 +61,21 @@ class ProductService {
   Future<Product> createProduct({
     required String name,
     required String image,
-    required List<String> description,
+    required String description,
     required double price,
     required String category,
   }) async {
     try {
-      final response = await _client.from('products').insert({
-        'name': name,
+      final idProduit = DateTime.now().millisecondsSinceEpoch.toString();
+      final response = await _client.from('Produit').insert({
+        'idProduit': idProduit,
+        'nom': name,
         'image': image,
-        'description': description, // Supabase handles JSON arrays
-        'price': price,
-        'category': category,
-        'created_at': DateTime.now().toIso8601String(),
-      }).select('id, name, image, description, price, category').single();
+        'description': description,
+        'prix': price,
+        'categorie': category,
+        'disponible': true,
+      }).select('idProduit, nom, image, description, prix, categorie, disponible, created_at, updated_at').single();
 
       return Product.fromJson(response);
     } on PostgrestException catch (e) {
@@ -86,26 +90,26 @@ class ProductService {
     required String id,
     String? name,
     String? image,
-    List<String>? description,
+    String? description,
     double? price,
     String? category,
+    bool? disponible,
   }) async {
     try {
-      final Map<String, dynamic> updates = {
-        'updated_at': DateTime.now().toIso8601String(),
-      };
+      final Map<String, dynamic> updates = {};
 
-      if (name != null) updates['name'] = name;
+      if (name != null) updates['nom'] = name;
       if (image != null) updates['image'] = image;
       if (description != null) updates['description'] = description;
-      if (price != null) updates['price'] = price;
-      if (category != null) updates['category'] = category;
+      if (price != null) updates['prix'] = price;
+      if (category != null) updates['categorie'] = category;
+      if (disponible != null) updates['disponible'] = disponible;
 
       final response = await _client
-          .from('products')
+          .from('Produit')
           .update(updates)
-          .eq('id', id)
-          .select('id, name, image, description, price, category')
+          .eq('idProduit', id)
+          .select('idProduit, nom, image, description, prix, categorie, disponible, created_at, updated_at')
           .single();
 
       return Product.fromJson(response);
@@ -116,10 +120,13 @@ class ProductService {
     }
   }
 
-  /// Delete a product
+  /// Delete a product (soft delete by setting disponible to false)
   Future<void> deleteProduct(String id) async {
     try {
-      await _client.from('products').delete().eq('id', id);
+      await _client
+          .from('Produit')
+          .update({'disponible': false})
+          .eq('idProduit', id);
     } on PostgrestException catch (e) {
       throw Exception('Erreur lors de la suppression du produit: ${e.message}');
     } catch (e) {
@@ -131,20 +138,21 @@ class ProductService {
   Future<List<String>> fetchCategories() async {
     try {
       final response = await _client
-          .from('products')
-          .select('category')
-          .order('category');
+          .from('Produit')
+          .select('categorie')
+          .eq('disponible', true)
+          .order('categorie');
 
       final rows = List<Map<String, dynamic>>.from(response);
       final categories = rows
-          .map((row) => row['category'] as String? ?? '')
+          .map((row) => row['categorie'] as String? ?? '')
           .where((cat) => cat.isNotEmpty)
           .toSet()
           .toList();
       return categories;
     } catch (e) {
       // Return default categories if table doesn't exist
-      return ['mlawi', 'jus', 'supplement'];
+      return ['Plat Principal', 'Boisson', 'Dessert', 'Supplement'];
     }
   }
 }

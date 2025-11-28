@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_app/Gerant/services/auth_service.dart';
 import 'package:supabase_app/Gerant/services/dashboard_service.dart';
+import 'package:supabase_app/Gerant/services/product_service.dart';
 import 'package:supabase_app/Routes/app_routes.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -95,9 +96,11 @@ class _DashboardPageState extends State<DashboardPage> {
                     const SizedBox(height: 24),
                     _buildAlertsSection(data.alerts),
                     const SizedBox(height: 24),
-            _buildActions(),
-            const SizedBox(height: 24),
-            _buildOrderManagementActions(),
+                    _buildProductManagementActions(),
+                    const SizedBox(height: 24),
+                    _buildActions(),
+                    const SizedBox(height: 24),
+                    _buildOrderManagementActions(),
                     const SizedBox(height: 16),
                     _buildLastUpdated(data),
                   ],
@@ -289,10 +292,10 @@ class _DashboardPageState extends State<DashboardPage> {
               child: SizedBox(
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => _openRoute(AppRoutes.gerantCommand),
+                  onPressed: () => _openRoute(AppRoutes.gerantTeam),
                   style: _actionStyle(),
                   child: const Text(
-                    'Affecter\ncommandes',
+                    'Gérer équipe',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -304,10 +307,10 @@ class _DashboardPageState extends State<DashboardPage> {
               child: SizedBox(
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () => _openRoute(AppRoutes.gerantTeam),
+                  onPressed: () => _openRoute(AppRoutes.gerantKitchen),
                   style: _actionStyle(),
                   child: const Text(
-                    'Gérer équipe',
+                    'Équipe cuisine',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -344,6 +347,42 @@ class _DashboardPageState extends State<DashboardPage> {
                     'Remboursements',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductManagementActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Gestion des Produits',
+          style: TextStyle(color: Color(0xFFFF6B35), fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddProductDialog(),
+                  icon: const Icon(Icons.add),
+                  label: const Text(
+                    'Ajouter Produit',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -426,6 +465,154 @@ class _DashboardPageState extends State<DashboardPage> {
         return Icons.info_outline;
     }
     return Icons.info_outline;
+  }
+
+  void _showProductManagement() {
+    // Simple dialog for now - could be expanded to full product management
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF3A3A3A),
+        title: const Text('Gestion des Produits', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Fonctionnalité de gestion des produits à implémenter.\n\nVous pouvez :\n• Modifier les prix\n• Changer la disponibilité\n• Mettre à jour les descriptions\n• Gérer les catégories',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddProductDialog() {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final priceController = TextEditingController();
+    String selectedCategory = 'Plat Principal';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF3A3A3A),
+        title: const Text('Ajouter un Produit', style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Nom du produit',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B35))),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B35))),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                style: const TextStyle(color: Colors.white),
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Prix (DT)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B35))),
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                dropdownColor: const Color(0xFF424242),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Catégorie',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF6B35))),
+                ),
+                items: ['Plat Principal', 'Entrée', 'Dessert', 'Boisson']
+                    .map((category) => DropdownMenuItem(
+                          value: category,
+                          child: Text(category, style: const TextStyle(color: Colors.white)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    selectedCategory = value;
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty || priceController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Veuillez remplir tous les champs')),
+                );
+                return;
+              }
+
+              try {
+                final price = double.tryParse(priceController.text);
+                if (price == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Prix invalide')),
+                  );
+                  return;
+                }
+
+                // Use the ProductService to add the product
+                // Note: This assumes the ProductService has been updated to work with the database
+                final productService = ProductService();
+                await productService.createProduct(
+                  name: nameController.text,
+                  description: descriptionController.text,
+                  price: price,
+                  category: selectedCategory,
+                  image: 'assets/images/mlawi.jpeg', // Default image
+                );
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Produit "${nameController.text}" ajouté avec succès')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erreur: $e')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF6B35)),
+            child: const Text('Ajouter'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
