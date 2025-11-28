@@ -49,7 +49,6 @@ class AppRoutes {
   static const String gerantKitchen = '/gerant/kitchen';
   static const String gerantTeam = '/gerant/team';
 
-  // Livreur
   static const String livreurHome = '/livreur/home';
 
   // Coordinateur
