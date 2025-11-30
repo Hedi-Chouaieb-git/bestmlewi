@@ -952,7 +952,7 @@ class _PointDeVentePageState extends State<PointDeVentePage> {
                       fit: BoxFit.contain,
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.clientHome),
+                      onTap: () => Navigator.pushNamed(context, AppRoutes.gerantDashboard),
                       child: Container(
                         width: 70,
                         height: 70,

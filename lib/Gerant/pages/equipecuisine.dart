@@ -1,19 +1,144 @@
 import 'package:flutter/material.dart';
+import '../../Routes/app_routes.dart';
+import '../services/role_service.dart';
+import '../services/sales_point_service.dart';
+import '../../models/collaborator.dart';
 
-class EquipeCuisinePage extends StatelessWidget {
-  // Dummy data, replace with your actual team data
-  final List<Map<String, String>> equipeCuisine = [
-    {
-      'name': 'name',
-      'order': '182 (12min)',
-      'status': 'DISPONIBLE',
-    },
-    {
-      'name': 'name',
-      'order': '182 (12min)',
-      'status': 'DISPONIBLE',
-    },
-  ];
+class EquipeCuisinePage extends StatefulWidget {
+  const EquipeCuisinePage({Key? key}) : super(key: key);
+
+  @override
+  _EquipeCuisinePageState createState() => _EquipeCuisinePageState();
+}
+
+class _EquipeCuisinePageState extends State<EquipeCuisinePage> {
+  final RoleService _roleService = RoleService();
+  final SalesPointService _salesPointService = SalesPointService();
+
+  bool _isLoading = true;
+  String? _error;
+  List<Collaborator> _kitchenMembers = [];
+  List<Map<String, dynamic>> _salesPoints = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final collaborators = await _roleService.fetchCollaborators();
+      final salesPoints = await _salesPointService.getSalesPoints();
+
+      setState(() {
+        _kitchenMembers = collaborators.where((c) => c.role.toLowerCase() == 'cuisinier').toList();
+        _salesPoints = salesPoints;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showReassignDialog(Collaborator member) {
+    String? selectedPointId = member.idPointAffecte;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF424242),
+          title: Text(
+            'Réaffecter ${member.fullName}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: _salesPoints.isEmpty
+              ? const Text(
+                  'Aucun point de vente disponible',
+                  style: TextStyle(color: Colors.white70),
+                )
+              : DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedPointId,
+                  hint: const Text(
+                    'Sélectionner un point de vente',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  dropdownColor: const Color(0xFF424242),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text(
+                        'Aucun point de vente',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    ..._salesPoints.map((point) => DropdownMenuItem(
+                          value: point['idPoint'] as String,
+                          child: Text(
+                            point['nom'] as String,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        )),
+                  ],
+                  onChanged: (val) {
+                    selectedPointId = val;
+                    (context as Element).markNeedsBuild();
+                  },
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _roleService.assignRole(
+                    collaboratorId: member.idCollab,
+                    role: 'Cuisinier',
+                    salesPointId: selectedPointId,
+                  );
+
+                  Navigator.of(context).pop();
+                  _loadData(); // Refresh the list
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cuisinier réaffecté avec succès'),
+                      backgroundColor: Color(0xFFFF6B35),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erreur: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF6B35),
+              ),
+              child: const Text('Réaffecter'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,115 +181,141 @@ class EquipeCuisinePage extends StatelessWidget {
 
               // Stacked member cards
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 36),
-                  itemCount: equipeCuisine.length,
-                  itemBuilder: (context, index) {
-                    final member = equipeCuisine[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: Stack(
-                        alignment: Alignment.topCenter,
-                        children: [
-                          // Card details
-                          Container(
-                            margin: const EdgeInsets.only(top: 48),
-                            padding: const EdgeInsets.fromLTRB(20, 55, 20, 24),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF424242),
-                              borderRadius: BorderRadius.circular(28),
-                            ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)))
+                    : _error != null
+                        ? Center(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const SizedBox(height: 8),
-                                Text(
-                                  '• ${member['order']}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '• ${member['status']}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // Button
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 54,
-                                  child: ElevatedButton(
-                                    onPressed: () {},
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                      const Color(0xFFFF6B35),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(18),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: const Text(
-                                      'RÉAFFECTER',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
+                                Text('Erreur: $_error', style: const TextStyle(color: Colors.red)),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadData,
+                                  child: const Text('Réessayer'),
                                 ),
                               ],
                             ),
-                          ),
-                          // Circular user icon above card center
-                          Positioned(
-                            top: 0,
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 98,
-                                  height: 98,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFF6B35),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.person_outline,
-                                        size: 55,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        member['name'] ?? '',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w400,
-                                          fontFamily: 'Montserrat',
+                          )
+                        : _kitchenMembers.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'Aucun cuisinier trouvé',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 36),
+                                itemCount: _kitchenMembers.length,
+                                itemBuilder: (context, index) {
+                                  final member = _kitchenMembers[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 24),
+                                    child: Stack(
+                                      alignment: Alignment.topCenter,
+                                      children: [
+                                        // Card details
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 48),
+                                          padding: const EdgeInsets.fromLTRB(20, 55, 20, 24),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF424242),
+                                            borderRadius: BorderRadius.circular(28),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                '• Statut: ${member.disponible ? 'Disponible' : 'Occupé'}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                '• Téléphone: ${member.telephone ?? 'N/A'}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 24),
+                                              // Button
+                                              SizedBox(
+                                                width: double.infinity,
+                                                height: 54,
+                                                child: ElevatedButton(
+                                                  onPressed: () => _showReassignDialog(member),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: const Color(0xFFFF6B35),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(18),
+                                                    ),
+                                                    elevation: 0,
+                                                  ),
+                                                  child: const Text(
+                                                    'RÉAFFECTER',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                      letterSpacing: 1,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                                        // Circular user icon above card center
+                                        Positioned(
+                                          top: 0,
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 98,
+                                                height: 98,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFFF6B35),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.person_outline,
+                                                      size: 40,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      child: Text(
+                                                        member.fullName,
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w400,
+                                                          fontFamily: 'Montserrat',
+                                                        ),
+                                                        maxLines: 1,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
               ),
 
               // Bottom Navigation Bar
@@ -176,38 +327,58 @@ class EquipeCuisinePage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // Logo
-                    Image.asset(
-                      'assets/images/logo.png',
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.contain,
-                    ),
-                    // Home/Menu Button
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF6B35),
-                        shape: BoxShape.circle,
+                    // Logo - Navigate to Dashboard
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
+                      },
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
                       ),
+                    ),
+                    // Home/Menu Button - Navigate to Dashboard
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantDashboard);
+                      },
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFF6B35),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.restaurant,
+                          color: Colors.white,
+                          size: 35,
+                        ),
+                      ),
+                    ),
+                    // Profile Button - Navigate to Collaborateurs
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantTeam);
+                      },
                       child: const Icon(
-                        Icons.restaurant,
+                        Icons.person_outline,
                         color: Colors.white,
                         size: 35,
                       ),
                     ),
-                    // Profile Button
-                    const Icon(
-                      Icons.person_outline,
-                      color: Colors.white,
-                      size: 35,
-                    ),
-                    // Menu Button
-                    const Icon(
-                      Icons.menu,
-                      color: Colors.white,
-                      size: 35,
+                    // Menu Button - Navigate to Collaborateurs
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.gerantTeam);
+                      },
+                      child: const Icon(
+                        Icons.menu,
+                        color: Colors.white,
+                        size: 35,
+                      ),
                     ),
                   ],
                 ),
