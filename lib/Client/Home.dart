@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:supabase_app/Routes/app_routes.dart';
 import 'package:supabase_app/services/auth_service.dart';
+import 'package:supabase_app/services/notification_service.dart';
+import 'package:supabase_app/widgets/notification_bell.dart';
 import 'widgets/nav_bar.dart';
 
 class ClientHomePage extends StatefulWidget {
@@ -14,15 +17,90 @@ class ClientHomePage extends StatefulWidget {
 
 class _ClientHomePageState extends State<ClientHomePage> {
   final supabase = Supabase.instance.client;
+  final NotificationService _notificationService = NotificationService();
 
   bool _isLoading = false;
   String _customerName = 'TopMlawi Lover';
   String _favoriteCategory = 'Mlawi';
+  Map<String, String> _lastOrderStatuses = {}; // orderId -> status
+  Timer? _statusCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _startOrderStatusMonitoring();
+  }
+
+  @override
+  void dispose() {
+    _statusCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startOrderStatusMonitoring() {
+    // Check order statuses every 10 seconds
+    _statusCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _checkOrderStatusChanges();
+    });
+  }
+
+  Future<void> _checkOrderStatusChanges() async {
+    try {
+      // Get current user's orders (assuming we can identify the current client)
+      // For now, we'll check recent orders - in production this should be filtered by current client ID
+      final response = await supabase
+          .from('Commande')
+          .select('idCommande, statut, idClient')
+          .order('dateCommande', ascending: false)
+          .limit(10);
+
+      final orders = List<Map<String, dynamic>>.from(response);
+
+      for (final order in orders) {
+        final orderId = order['idCommande'] as String;
+        final currentStatus = order['statut'] as String;
+        final previousStatus = _lastOrderStatuses[orderId];
+
+        // If status changed, show notification
+        if (previousStatus != null && previousStatus != currentStatus) {
+          String notificationTitle = '';
+          String notificationMessage = '';
+
+          switch (currentStatus) {
+            case 'en_preparation':
+              notificationTitle = 'Commande en préparation';
+              notificationMessage = 'Votre commande #$orderId est maintenant en cours de préparation.';
+              break;
+            case 'en_cours':
+              notificationTitle = 'Commande en livraison';
+              notificationMessage = 'Votre commande #$orderId est en cours de livraison.';
+              break;
+            case 'livree':
+              notificationTitle = 'Commande livrée';
+              notificationMessage = 'Votre commande #$orderId a été livrée avec succès !';
+              break;
+            case 'annulee':
+              notificationTitle = 'Commande annulée';
+              notificationMessage = 'Votre commande #$orderId a été annulée.';
+              break;
+          }
+
+          if (notificationTitle.isNotEmpty) {
+            await _notificationService.showClientNotification(
+              orderId: orderId,
+              title: notificationTitle,
+              message: notificationMessage,
+            );
+          }
+        }
+
+        // Update last known status
+        _lastOrderStatuses[orderId] = currentStatus;
+      }
+    } catch (e) {
+      print('Error checking order status changes: $e');
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -125,6 +203,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
           ),
           Row(
             children: [
+              const NotificationBell(),
               IconButton(
                 onPressed: _loadProfile,
                 icon: const Icon(Icons.refresh, color: Colors.white),

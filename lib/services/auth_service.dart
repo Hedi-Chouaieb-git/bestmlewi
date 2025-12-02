@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum UserRole {
   client,
@@ -288,5 +289,47 @@ class AuthService {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Save current user data to SharedPreferences
+  Future<void> saveCurrentUser(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('currentUserId', userData['userId']);
+    await prefs.setString('currentUserType', userData['userType'].toString());
+    if (userData['userRole'] != null) {
+      await prefs.setString('currentUserRole', userData['userRole'].toString());
+    }
+    await prefs.setString('currentUserData', userData['userData'].toString());
+  }
+
+  /// Get current user data from SharedPreferences
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('currentUserId');
+    final userType = prefs.getString('currentUserType');
+    final userRole = prefs.getString('currentUserRole');
+
+    if (userId == null || userType == null) return null;
+
+    return {
+      'userId': userId,
+      'userType': userType,
+      'userRole': userRole,
+    };
+  }
+
+  /// Clear current user data (logout)
+  Future<void> clearCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('currentUserId');
+    await prefs.remove('currentUserType');
+    await prefs.remove('currentUserRole');
+    await prefs.remove('currentUserData');
+  }
+
+  /// Get current user ID
+  Future<String?> getCurrentUserId() async {
+    final userData = await getCurrentUserData();
+    return userData?['userId'];
   }
 }

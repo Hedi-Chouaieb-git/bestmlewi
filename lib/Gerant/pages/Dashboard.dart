@@ -48,6 +48,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _logout() async {
     await _authService.signOut();
+    // Also clear current user data from SharedPreferences
+    final mainAuthService = AuthService();
+    await mainAuthService.clearCurrentUser();
     if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
   }

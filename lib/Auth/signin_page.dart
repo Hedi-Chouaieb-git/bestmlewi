@@ -50,6 +50,8 @@ class _SignInPageState extends State<SignInPage> {
           phone: _phoneController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        // Save user data
+        await _authService.saveCurrentUser(result);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.clientMenu);
       } else {
@@ -57,6 +59,8 @@ class _SignInPageState extends State<SignInPage> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        // Save user data
+        await _authService.saveCurrentUser(result);
         if (!mounted) return;
 
         final role = result['userRole'] as UserRole?;

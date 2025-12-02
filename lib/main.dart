@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/notification_service.dart';
 import 'Routes/app_routes.dart';
 
 void main() async {
@@ -10,6 +11,10 @@ void main() async {
     url: 'https://qxajdhjecopmgvbtbkpu.supabase.co/',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4YWpkaGplY29wbWd2YnRia3B1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzMxMTYsImV4cCI6MjA3OTU0OTExNn0.CB06Fr7jcQPAFctPG7chV9yeF6B2GQldgFyqcrdq7Bc',
   );
+
+  // Initialize local notifications
+  final notificationService = NotificationService();
+  await notificationService.initializeLocalNotifications();
 
   runApp(const MyApp());
 }

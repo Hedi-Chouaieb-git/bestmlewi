@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../models/order.dart';
+import '../../services/notification_service.dart';
 import '../../Routes/app_routes.dart';
 
 class DeliveryDetailsPage extends StatefulWidget {
@@ -92,6 +93,30 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
       // Create notification for coordinator
       await _createNotification('COORD001', _order!.idCommande, 'statut_modifie', 'Statut de livraison mis à jour');
 
+      // Create notification for client
+      String clientNotificationTitle = '';
+      String clientNotificationMessage = '';
+
+      switch (newStatus) {
+        case 'en_cours':
+          clientNotificationTitle = 'Commande en livraison';
+          clientNotificationMessage = 'Votre commande #${_order!.idCommande} est en cours de livraison.';
+          break;
+        case 'livree':
+          clientNotificationTitle = 'Commande livrée';
+          clientNotificationMessage = 'Votre commande #${_order!.idCommande} a été livrée avec succès !';
+          break;
+      }
+
+      if (clientNotificationTitle.isNotEmpty) {
+        final notificationService = NotificationService();
+        await notificationService.showClientNotification(
+          orderId: _order!.idCommande,
+          title: clientNotificationTitle,
+          message: clientNotificationMessage,
+        );
+      }
+
       await _loadDeliveryDetails();
 
       if (mounted) {
@@ -117,16 +142,14 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
 
   Future<void> _createNotification(String recipientId, String orderId, String type, String message) async {
     try {
-      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
-      await supabase.from('Notifications').insert({
-        'idNotification': notificationId,
-        'idDestinataire': recipientId,
-        'idCommande': orderId,
-        'type': type,
-        'titre': message,
-        'message': 'Commande $orderId: $message',
-        'lue': false,
-      });
+      final notificationService = NotificationService();
+      await notificationService.createNotification(
+        recipientId: recipientId,
+        orderId: orderId,
+        type: type,
+        title: message,
+        message: 'Commande $orderId: $message',
+      );
     } catch (e) {
       print('Error creating notification: $e');
     }

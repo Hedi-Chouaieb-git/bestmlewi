@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../services/order_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/order.dart';
 import '../../models/collaborator.dart';
 //import 'command_details_page.dart';
@@ -75,10 +76,49 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
 
   Future<void> updateCommandStatus(String commandId, String newStatus) async {
     try {
+      // Get order details first to notify client
+      final orderDetails = await supabase
+          .from('Commande')
+          .select('idClient, statut')
+          .eq('idCommande', commandId)
+          .single();
+
       await supabase
           .from('Commande')
           .update({'statut': newStatus})
           .eq('idCommande', commandId);
+
+      // Notify client about status change
+      String clientNotificationTitle = '';
+      String clientNotificationMessage = '';
+
+      switch (newStatus) {
+        case 'en_preparation':
+          clientNotificationTitle = 'Commande en préparation';
+          clientNotificationMessage = 'Votre commande #$commandId est maintenant en cours de préparation.';
+          break;
+        case 'en_cours':
+          clientNotificationTitle = 'Commande en livraison';
+          clientNotificationMessage = 'Votre commande #$commandId est en cours de livraison.';
+          break;
+        case 'livree':
+          clientNotificationTitle = 'Commande livrée';
+          clientNotificationMessage = 'Votre commande #$commandId a été livrée avec succès !';
+          break;
+        case 'annulee':
+          clientNotificationTitle = 'Commande annulée';
+          clientNotificationMessage = 'Votre commande #$commandId a été annulée.';
+          break;
+      }
+
+      if (clientNotificationTitle.isNotEmpty) {
+        final notificationService = NotificationService();
+        await notificationService.showClientNotification(
+          orderId: commandId,
+          title: clientNotificationTitle,
+          message: clientNotificationMessage,
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -285,16 +325,14 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
 
   Future<void> _createNotification(String recipientId, String orderId, String type, String message) async {
     try {
-      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
-      await supabase.from('Notifications').insert({
-        'idNotification': notificationId,
-        'idDestinataire': recipientId,
-        'idCommande': orderId,
-        'type': type,
-        'titre': message,
-        'message': 'Commande $orderId: $message',
-        'lue': false,
-      });
+      final notificationService = NotificationService();
+      await notificationService.createNotification(
+        recipientId: recipientId,
+        orderId: orderId,
+        type: type,
+        title: message,
+        message: 'Commande $orderId: $message',
+      );
     } catch (e) {
       print('Error creating notification: $e');
     }

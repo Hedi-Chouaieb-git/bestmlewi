@@ -8,6 +8,8 @@ import 'manage_commands_page.dart';
 //import 'view_menu_page.dart';
 import 'coordinator_profile_page.dart';
 import 'package:intl/intl.dart';
+import '../services/auth_service.dart';
+import '../Routes/app_routes.dart';
 
 class CoordinatorDashboard extends StatefulWidget {
   final String coordinatorId;
@@ -182,6 +184,11 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white, size: 28),
                 onPressed: loadDashboardData,
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white, size: 28),
+                onPressed: _logout,
+                tooltip: 'Se déconnecter',
               ),
             ],
           ),
@@ -596,6 +603,15 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         ],
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    final authService = AuthService();
+    await authService.signOut();
+    await authService.clearCurrentUser();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.signIn, (route) => false);
+    }
   }
 
   Widget _buildNavButton(

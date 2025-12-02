@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/notification_service.dart';
+import '../../services/auth_service.dart';
 import 'delivery_details_page.dart';
 
 class LivreurHomePage extends StatefulWidget {
@@ -64,10 +66,41 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
           break;
       }
 
+      // Get order details first to notify client
+      final orderDetails = await supabase
+          .from('Commande')
+          .select('idClient, statut')
+          .eq('idCommande', id)
+          .single();
+
       await supabase.from('Commande').update(updates).eq('idCommande', id);
 
       // Create notification for coordinator/manager
       await _createNotification(id, 'statut_modifie', 'Statut de livraison mis à jour');
+
+      // Create notification for client
+      String clientNotificationTitle = '';
+      String clientNotificationMessage = '';
+
+      switch (newStatus) {
+        case 'en_cours':
+          clientNotificationTitle = 'Commande en livraison';
+          clientNotificationMessage = 'Votre commande #$id est en cours de livraison.';
+          break;
+        case 'livree':
+          clientNotificationTitle = 'Commande livrée';
+          clientNotificationMessage = 'Votre commande #$id a été livrée avec succès !';
+          break;
+      }
+
+      if (clientNotificationTitle.isNotEmpty) {
+        final notificationService = NotificationService();
+        await notificationService.showClientNotification(
+          orderId: id,
+          title: clientNotificationTitle,
+          message: clientNotificationMessage,
+        );
+      }
 
       await _loadDeliveries();
       if (mounted) {
@@ -87,18 +120,18 @@ class _LivreurHomePageState extends State<LivreurHomePage> {
     }
   }
 
+
+
   Future<void> _createNotification(String orderId, String type, String message) async {
     try {
-      final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
-      await supabase.from('Notifications').insert({
-        'idNotification': notificationId,
-        'idDestinataire': 'COORD001', // This should be dynamic based on coordinator
-        'idCommande': orderId,
-        'type': type,
-        'titre': message,
-        'message': 'Commande $orderId: $message',
-        'lue': false,
-      });
+      final notificationService = NotificationService();
+      await notificationService.createNotification(
+        recipientId: 'COORD001', // This should be dynamic based on coordinator
+        orderId: orderId,
+        type: type,
+        title: message,
+        message: 'Commande $orderId: $message',
+      );
     } catch (e) {
       print('Error creating notification: $e');
     }
