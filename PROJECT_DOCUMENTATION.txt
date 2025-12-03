@@ -1,0 +1,1099 @@
+================================================================================
+                    TOPMLAWI - COMPLETE PROJECT DOCUMENTATION
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+
+TopMlawi is a comprehensive food delivery management system built with Flutter 
+and Supabase. The application serves multiple user types:
+- Clients (Customers who order food)
+- Gérant (Manager who oversees operations)
+- Coordinateur (Coordinator who manages orders and assignments)
+- Livreur (Delivery person who delivers orders)
+- Cuisinier/Chef (Kitchen staff who prepare food)
+
+TECHNOLOGY STACK
+================================================================================
+
+Frontend: Flutter (Dart)
+Backend: Supabase (PostgreSQL database + Authentication)
+State Management: StatefulWidget with setState
+Local Storage: SharedPreferences
+Notifications: flutter_local_notifications
+Location Services: geolocator, google_maps_flutter
+Payment: flouci_payment
+
+================================================================================
+                         DATABASE ARCHITECTURE
+================================================================================
+
+The application uses the following main tables in Supabase:
+
+1. CLIENT TABLE
+   - idClient (TEXT, PRIMARY KEY): Unique client identifier
+   - nom (TEXT): Last name
+   - prenom (TEXT): First name
+   - email (TEXT): Email address
+   - phone (TEXT, UNIQUE): Phone number (used for login)
+   - password (TEXT): Password (should be hashed in production)
+   - adresse (TEXT): Delivery address
+   - ville (TEXT): City
+   - codePostal (TEXT): Postal code
+   - favorite (BOOLEAN): Favorite customer flag
+   - created_at, updated_at (TIMESTAMP): Audit fields
+
+2. COLLABORATEURS TABLE
+   - idCollab (TEXT, PRIMARY KEY): Unique collaborator identifier
+   - nom (TEXT): Last name
+   - prenom (TEXT): First name
+   - email (TEXT, UNIQUE): Email (used for login)
+   - password (TEXT): Password
+   - role (TEXT): Role (gerant, coordinateur, livreur, cuisinier, chef)
+   - disponible (BOOLEAN): Availability status
+   - telephone (TEXT): Phone number
+   - idPointAffecte (TEXT): Assigned sales point
+   - created_at, updated_at (TIMESTAMP): Audit fields
+
+3. COMMANDE TABLE
+   - idCommande (TEXT, PRIMARY KEY): Unique order identifier
+   - idClient (TEXT, FOREIGN KEY): Client who placed the order
+   - idPointVente (TEXT): Assigned sales point
+   - idCollab (TEXT): Assigned delivery person
+   - idCuisinier (TEXT): Assigned cook
+   - statut (TEXT): Order status (en_attente, en_preparation, en_cours, livree, annulee)
+   - dateCommande (TIMESTAMP): Order date
+   - dateLivraison (TIMESTAMP): Delivery date
+   - montantTotal (DECIMAL): Total amount
+   - adresseLivraison (TEXT): Delivery address
+   - notes (TEXT): Special instructions
+   - latitude, longitude (DECIMAL): Delivery location coordinates
+   - tempsPreparationDebut (TIMESTAMP): Preparation start time
+   - tempsPreparationFin (TIMESTAMP): Preparation end time
+   - tempsRemiseLivreur (TIMESTAMP): Handover to delivery time
+   - tempsRecuperationLivreur (TIMESTAMP): Pickup by delivery time
+   - tempsLivraison (TIMESTAMP): Delivery completion time
+
+4. PRODUIT/PRODUCTS TABLE
+   - idProduit/id (TEXT, PRIMARY KEY): Product identifier
+   - nom/name (TEXT): Product name
+   - description (TEXT): Product description
+   - prix/price (DECIMAL): Product price
+   - categorie/category (TEXT): Product category
+   - image (TEXT): Image URL/path
+   - disponible/available (BOOLEAN): Availability status
+
+5. POINTDEVENTE/SALES_POINTS TABLE
+   - idPoint/id (TEXT, PRIMARY KEY): Sales point identifier
+   - nom/title (TEXT): Sales point name
+   - adresse/address (TEXT): Address
+   - ville (TEXT): City
+   - telephone (TEXT): Phone number
+   - ouvert/status (BOOLEAN/TEXT): Open status
+   - heureOuverture, heureFermeture (TIME): Opening hours
+
+6. NOTIFICATIONS TABLE
+   - idNotification (TEXT, PRIMARY KEY): Notification identifier
+   - idDestinataire (TEXT): Recipient collaborator ID
+   - idCommande (TEXT): Related order ID
+   - type (TEXT): Notification type
+   - titre (TEXT): Notification title
+   - message (TEXT): Notification message
+   - lue (BOOLEAN): Read status
+   - created_at (TIMESTAMP): Creation time
+
+7. LOCATIONS TABLE
+   - idLocation (TEXT, PRIMARY KEY): Location identifier
+   - idCollab (TEXT): Delivery person ID
+   - latitude, longitude (DECIMAL): GPS coordinates
+   - timestamp (TIMESTAMP): Location update time
+   - vitesse (DECIMAL): Speed
+   - precision (DECIMAL): Location accuracy
+
+8. REFUNDREQUESTS TABLE
+   - idRefund (TEXT, PRIMARY KEY): Refund request identifier
+   - idCommande (TEXT): Related order ID
+   - idClient (TEXT): Client ID
+   - motif (TEXT): Refund reason
+   - statut (TEXT): Status (en_attente, approuvee, refusee)
+   - montantRembourse (DECIMAL): Refund amount
+   - traiteePar (TEXT): Manager who processed it
+   - dateTraitement (TIMESTAMP): Processing date
+
+================================================================================
+                         APPLICATION ARCHITECTURE
+================================================================================
+
+FOLDER STRUCTURE:
+lib/
+├── main.dart                    # Application entry point
+├── Routes/
+│   └── app_routes.dart         # Centralized route management
+├── auth/
+│   ├── signin_page.dart        # Unified sign-in page
+│   └── signup_page.dart        # Unified sign-up page
+├── Client/
+│   ├── Home.dart               # Client home page
+│   └── pages/
+│       ├── menu.dart           # Product catalog
+│       ├── cart.dart           # Shopping cart
+│       ├── PaymentPage.dart    # Payment processing
+│       ├── order_tracking.dart # Real-time order tracking
+│       └── product_detail.dart # Product details
+├── Gerant/
+│   ├── pages/
+│   │   ├── Dashboard.dart      # Manager dashboard
+│   │   ├── order_management.dart # Order management
+│   │   ├── collaborateur.dart  # Team management
+│   │   ├── sales point.dart    # Sales points management
+│   │   ├── equipecuisine.dart  # Kitchen team management
+│   │   ├── refunds_page.dart   # Refund requests
+│   │   └── AffecterRole.dart   # Role assignment
+│   └── services/
+│       ├── auth_service.dart   # Manager authentication
+│       ├── dashboard_service.dart # Dashboard data
+│       ├── product_service.dart # Product operations
+│       └── sales_point_service.dart # Sales point operations
+├── Collaborateur/
+│   ├── Coordinateur/
+│   │   ├── Home.dart           # Coordinator dashboard
+│   │   └── command_details_page.dart # Order details
+│   ├── Livreur/
+│   │   ├── Home.dart           # Delivery person home
+│   │   └── delivery_details_page.dart # Delivery details
+│   ├── collaborateursPage.dart # Coordinator dashboard
+│   ├── coordinator_profile_page.dart # Profile management
+│   └── manage_commands_page.dart # Order management
+├── models/
+│   ├── client.dart             # Client data model
+│   ├── collaborator.dart       # Collaborator data model
+│   ├── order.dart              # Order data model
+│   ├── product.dart            # Product data model
+│   ├── cart_item.dart          # Cart item model
+│   ├── notification.dart       # Notification model
+│   ├── location.dart           # Location model
+│   └── refund_request.dart     # Refund request model
+└── services/
+    ├── auth_service.dart       # Authentication service
+    ├── order_service.dart      # Order operations
+    ├── cart_service.dart       # Cart management
+    └── notification_service.dart # Notification handling
+
+================================================================================
+                         CORE FUNCTIONALITY EXPLAINED
+================================================================================
+
+1. AUTHENTICATION SYSTEM (auth_service.dart)
+================================================================================
+
+The authentication system handles two types of users:
+
+A. CLIENT AUTHENTICATION
+   - Uses phone number + password
+   - Queries the Client table directly
+   - No Supabase Auth integration (custom authentication)
+   
+   Function: signInClient(phone, password)
+   Logic:
+   1. Query Client table for matching phone and password
+   2. If found, return user data with UserType.client
+   3. If not found, throw error
+   4. Save user data to SharedPreferences for persistence
+
+B. COLLABORATEUR AUTHENTICATION
+   - Uses email + password
+   - Attempts Supabase Auth first, then falls back to direct database query
+   - Determines user role (gerant, coordinateur, livreur, etc.)
+   
+   Function: signInCollaborateur(email, password)
+   Logic:
+   1. Try Supabase Auth sign-in
+   2. Query Collaborateurs table for matching email and password
+   3. Extract role from database record
+   4. Map role string to UserRole enum
+   5. Return user data with UserType.collaborateur and specific role
+   6. Save user data to SharedPreferences
+
+C. SIGN-UP FUNCTIONALITY
+   - signUpClient(): Creates new client record in Client table
+   - signUpCollaborateur(): Creates Supabase Auth user + Collaborateurs record
+   
+D. SESSION MANAGEMENT
+   - saveCurrentUser(): Stores user data in SharedPreferences
+   - getCurrentUserData(): Retrieves stored user data
+   - clearCurrentUser(): Clears stored data on logout
+   - getCurrentUserId(): Gets current user ID from storage
+
+================================================================================
+
+2. ROUTING SYSTEM (app_routes.dart)
+================================================================================
+
+Centralized route management using named routes:
+
+ROUTE NAMING CONVENTION:
+- /signin, /signup: Authentication pages
+- /client/*: Client-specific pages
+- /gerant/*: Manager-specific pages
+- /livreur/*: Delivery person pages
+- /coordinateur/*: Coordinator pages
+
+ROUTE DEFINITIONS:
+static const String signIn = '/signin';
+static const String clientHome = '/client/home';
+static const String gerantDashboard = '/gerant/dashboard';
+static const String livreurHome = '/livreur/home';
+static const String coordinateurHome = '/coordinateur/home';
+
+ROUTE MAPPING:
+routes = {
+  signIn: (context) => const SignInPage(),
+  clientHome: (context) => const ClientHomePage(),
+  gerantDashboard: (context) => const DashboardPage(),
+  ...
+}
+
+NAVIGATION LOGIC:
+- After successful login, user is redirected based on their role
+- Client -> /client/home
+- Gerant -> /gerant/dashboard
+- Coordinateur -> /coordinateur/home
+- Livreur -> /livreur/home
+
+================================================================================
+
+3. CLIENT MODULE
+================================================================================
+
+A. CLIENT HOME PAGE (Client/Home.dart)
+   Purpose: Main landing page for clients after login
+   
+   Features:
+   - Welcome message with client name
+   - Quick access to menu
+   - View active orders
+   - Order history
+   - Profile management
+   
+   Key Functions:
+   - _loadClientData(): Fetches client info from database
+   - _loadActiveOrders(): Gets orders with status != 'livree'
+   - _navigateToMenu(): Opens product catalog
+   - _navigateToOrderTracking(): Opens order tracking page
+
+B. MENU PAGE (Client/pages/menu.dart)
+   Purpose: Display available products for ordering
+   
+   Features:
+   - Product grid/list view
+   - Category filtering
+   - Search functionality
+   - Add to cart button
+   - Product images and prices
+   
+   Key Functions:
+   - _loadProducts(): Fetches products from Produit/products table
+   - _filterByCategory(): Filters products by category
+   - _addToCart(): Adds product to cart using CartService
+   - _navigateToProductDetail(): Opens detailed product view
+
+C. CART PAGE (Client/pages/cart.dart)
+   Purpose: Manage shopping cart before checkout
+   
+   Features:
+   - List of cart items
+   - Quantity adjustment
+   - Remove items
+   - Calculate total
+   - Proceed to checkout
+   
+   Key Functions:
+   - _loadCart(): Gets cart items from CartService
+   - _updateQuantity(itemId, newQuantity): Updates item quantity
+   - _removeItem(itemId): Removes item from cart
+   - _calculateTotal(): Sums up all item prices
+   - _proceedToCheckout(): Navigates to payment page
+
+D. PAYMENT PAGE (Client/pages/PaymentPage.dart)
+   Purpose: Handle payment processing
+   
+   Features:
+   - Delivery address input
+   - Payment method selection (Flouci integration)
+   - Order notes/special instructions
+   - Place order button
+   
+   Key Functions:
+   - _submitOrder(): Creates order in Commande table
+   - _processPayment(): Integrates with Flouci payment gateway
+   - _clearCart(): Empties cart after successful order
+   - _createOrderRecord(): Inserts order into database
+   
+   Order Creation Logic:
+   1. Validate delivery address
+   2. Calculate total amount from cart
+   3. Process payment via Flouci
+   4. Create order record with status 'en_attente'
+   5. Clear cart
+   6. Navigate to order tracking page
+
+E. ORDER TRACKING PAGE (Client/pages/order_tracking.dart)
+   Purpose: Real-time order status tracking
+   
+   Features:
+   - Order status timeline
+   - Delivery person location on map (if en_cours)
+   - Estimated delivery time
+   - Contact delivery person
+   
+   Key Functions:
+   - _loadOrderDetails(): Fetches order from Commande table
+   - _subscribeToOrderUpdates(): Real-time updates via Supabase
+   - _loadDeliveryPersonLocation(): Gets location from Locations table
+   - _updateMap(): Updates Google Maps with delivery person position
+   
+   Status Timeline:
+   1. en_attente (Pending) - Order received
+   2. en_preparation (Preparing) - Kitchen is preparing
+   3. en_cours (In Transit) - Delivery person is on the way
+   4. livree (Delivered) - Order completed
+
+================================================================================
+
+4. GERANT (MANAGER) MODULE
+================================================================================
+
+A. DASHBOARD (Gerant/pages/Dashboard.dart)
+   Purpose: Overview of business operations
+   
+   Features:
+   - Key metrics (total orders, revenue, active deliveries)
+   - Recent orders list
+   - Alerts and notifications
+   - Quick action buttons
+   
+   Key Functions:
+   - _loadDashboardData(): Fetches aggregated data
+   - _calculateMetrics(): Computes KPIs
+   - _loadRecentOrders(): Gets latest orders
+   - _loadAlerts(): Fetches system alerts
+   
+   Metrics Calculated:
+   - Total orders today
+   - Total revenue today
+   - Active deliveries count
+   - Pending orders count
+   - Average delivery time
+
+B. ORDER MANAGEMENT (Gerant/pages/order_management.dart)
+   Purpose: Manage all orders in the system
+   
+   Features:
+   - Order list with filters (status, date)
+   - Assign cook to order
+   - Assign delivery person to order
+   - Update order status
+   - View order details
+   
+   Key Functions:
+   - _loadOrders(): Fetches all orders
+   - _filterOrders(status): Filters by status
+   - _assignCook(orderId, cookId): Assigns cook and updates status
+   - _assignDeliveryPerson(orderId, livreurId): Assigns delivery person
+   - _updateOrderStatus(orderId, newStatus): Changes order status
+   
+   Assignment Logic:
+   1. Check collaborator availability (disponible = true)
+   2. Update Commande table with idCuisinier or idCollab
+   3. Update order status (en_attente -> en_preparation)
+   4. Create notification for assigned collaborator
+   5. Update timestamp fields (tempsPreparationDebut, etc.)
+
+C. TEAM MANAGEMENT (Gerant/pages/collaborateur.dart)
+   Purpose: Manage collaborators (employees)
+   
+   Features:
+   - List all collaborators
+   - Filter by role
+   - Add new collaborator
+   - Edit collaborator details
+   - Toggle availability status
+   - Assign to sales point
+   
+   Key Functions:
+   - _loadCollaborators(): Fetches from Collaborateurs table
+   - _addCollaborator(): Creates new collaborator record
+   - _updateCollaborator(): Updates collaborator details
+   - _toggleAvailability(collabId): Toggles disponible field
+   - _assignToSalesPoint(collabId, pointId): Updates idPointAffecte
+
+D. SALES POINTS MANAGEMENT (Gerant/pages/sales point.dart)
+   Purpose: Manage TopMlawi locations
+   
+   Features:
+   - List all sales points
+   - Add new sales point
+   - Edit sales point details
+   - View assigned collaborators
+   - Toggle open/closed status
+   
+   Key Functions:
+   - _loadSalesPoints(): Fetches from PointDeVente/sales_points
+   - _addSalesPoint(): Creates new sales point
+   - _updateSalesPoint(): Updates sales point details
+   - _toggleStatus(pointId): Changes ouvert/status field
+   - _assignCollaborators(pointId, collabIds): Links collaborators
+
+E. KITCHEN TEAM (Gerant/pages/equipecuisine.dart)
+   Purpose: Manage kitchen staff
+   
+   Features:
+   - List kitchen team members
+   - View specialties and experience
+   - Assign to orders
+   - Track performance
+   
+   Key Functions:
+   - _loadKitchenTeam(): Fetches from EquipeCuisine table
+   - _addKitchenMember(): Creates new kitchen team member
+   - _updateMember(): Updates member details
+
+F. REFUNDS PAGE (Gerant/pages/refunds_page.dart)
+   Purpose: Handle refund requests
+   
+   Features:
+   - List refund requests
+   - Filter by status
+   - Approve/reject refunds
+   - Add processing notes
+   
+   Key Functions:
+   - _loadRefundRequests(): Fetches from RefundRequests table
+   - _approveRefund(refundId, amount): Approves refund
+   - _rejectRefund(refundId, reason): Rejects refund
+   - _updateRefundStatus(refundId, status): Changes status
+
+G. ROLE ASSIGNMENT (Gerant/pages/AffecterRole.dart)
+   Purpose: Assign/change collaborator roles
+   
+   Features:
+   - Select collaborator
+   - Choose new role
+   - Update permissions
+   
+   Key Functions:
+   - _loadCollaborators(): Gets all collaborators
+   - _updateRole(collabId, newRole): Updates role field
+   - _validateRoleChange(): Ensures valid role transition
+
+================================================================================
+
+5. COORDINATEUR (COORDINATOR) MODULE
+================================================================================
+
+A. COORDINATOR DASHBOARD (Collaborateur/collaborateursPage.dart)
+   Purpose: Central hub for coordinators
+   
+   Features:
+   - Statistics cards (pending, active, completed orders)
+   - Recent commands list
+   - Quick actions (manage commands, view menu, profile)
+   - Bottom navigation bar
+   
+   Key Functions:
+   - loadDashboardData(): Fetches coordinator info and order stats
+   - _buildStatsCards(): Displays order statistics
+   - _buildRecentCommands(): Shows latest 5 orders
+   - _buildQuickActions(): Action buttons for common tasks
+   
+   Statistics Calculated:
+   - pendingCommands: Count of orders with status 'en_attente'
+   - activeCommands: Count of orders with status 'en_cours' or 'en_preparation'
+   - completedToday: Count of orders delivered today
+   
+   Data Loading Logic:
+   1. Get coordinator ID from current user
+   2. Fetch coordinator data from Collaborateurs table
+   3. Query Commande table for order counts by status
+   4. Fetch recent orders with Client and Collaborateurs joins
+   5. Update UI with statistics
+
+B. MANAGE COMMANDS PAGE (Collaborateur/manage_commands_page.dart)
+   Purpose: Detailed order management for coordinators
+   
+   Features:
+   - Order list with status filters
+   - Assign cook to pending orders
+   - Assign delivery person to prepared orders
+   - Update order status
+   - View order details
+   - Pull-to-refresh
+   
+   Key Functions:
+   - loadCommands(): Fetches all orders with related data
+   - applyFilter(): Filters orders by selected status
+   - assignCook(commandId): Shows cook selection dialog and assigns
+   - assignDeliveryPerson(commandId): Shows delivery person selection and assigns
+   - updateCommandStatus(commandId, newStatus): Changes order status
+   
+   Assignment Workflow:
+   1. User clicks "Assigner cuisinier" button
+   2. System queries available cooks (role='cuisinier')
+   3. Dialog shows list of available cooks
+   4. User selects a cook
+   5. System updates Commande:
+      - Sets idCuisinier
+      - Changes statut to 'en_preparation'
+      - Sets tempsPreparationDebut to current time
+   6. Creates notification for assigned cook
+   7. Refreshes order list
+   
+   Similar workflow for delivery person assignment.
+
+C. COMMAND DETAILS PAGE (Collaborateur/Cordinateur/command_details_page.dart)
+   Purpose: Detailed view of a single order
+   
+   Features:
+   - Order header (ID, status, total amount)
+   - Client information (name, phone, address)
+   - Staff information (assigned cook, delivery person)
+   - Order timeline (preparation, pickup, delivery times)
+   - Assignment actions
+   
+   Key Functions:
+   - _loadCommandDetails(): Fetches order and related data
+   - _assignCook(): Assigns cook to order
+   - _assignDelivery(): Assigns delivery person
+   - _buildTimeline(): Displays order progress timeline
+   
+   Data Fetching:
+   1. Query Commande table for order details
+   2. Query Client table for customer info
+   3. Query Collaborateurs for assigned cook (if any)
+   4. Query Collaborateurs for assigned delivery person (if any)
+   5. Display all information in organized sections
+
+D. COORDINATOR PROFILE (Collaborateur/coordinator_profile_page.dart)
+   Purpose: View and edit coordinator profile
+   
+   Features:
+   - Display profile information
+   - Edit mode for updating details
+   - Save changes to database
+   
+   Key Functions:
+   - loadProfile(): Fetches coordinator data
+   - saveProfile(): Updates Collaborateurs table
+   - _buildProfileField(): Renders editable text fields
+
+================================================================================
+
+6. LIVREUR (DELIVERY PERSON) MODULE
+================================================================================
+
+A. LIVREUR HOME PAGE (Collaborateur/Livreur/Home.dart)
+   Purpose: Main interface for delivery persons
+   
+   Features:
+   - List of assigned deliveries
+   - Filter by status (en_preparation, en_cours)
+   - Start delivery button
+   - View delivery details
+   - Toggle availability
+   
+   Key Functions:
+   - _loadDeliveries(): Fetches orders assigned to this delivery person
+   - _filterDeliveries(status): Filters by delivery status
+   - _toggleAvailability(): Updates disponible field
+   - _startDelivery(orderId): Changes status to 'en_cours'
+   
+   Query Logic:
+   SELECT * FROM Commande 
+   WHERE idCollab = [current_livreur_id] 
+   AND statut IN ('en_preparation', 'en_cours')
+   ORDER BY dateCommande DESC
+
+B. DELIVERY DETAILS PAGE (Collaborateur/Livreur/delivery_details_page.dart)
+   Purpose: Detailed view of a delivery
+   
+   Features:
+   - Order header (ID, status, amount, date)
+   - Client information (name, phone, address)
+   - Delivery information (sales point, cook, notes)
+   - Status timeline
+   - Action buttons (start delivery, mark as delivered)
+   
+   Key Functions:
+   - _loadDeliveryDetails(): Fetches order and client data
+   - _updateDeliveryStatus(newStatus): Updates order status
+   - _buildStatusTimeline(): Displays order progress
+   - _buildActionButtons(): Shows status-specific actions
+   
+   Status Update Logic:
+   1. User clicks "Commencer la livraison"
+   2. System updates Commande:
+      - Changes statut to 'en_cours'
+      - Sets tempsRecuperationLivreur to current time
+   3. Creates notification for coordinator
+   4. Creates notification for client
+   5. Refreshes delivery details
+   
+   When marking as delivered:
+   1. User clicks "Marquer comme livrée"
+   2. System updates Commande:
+      - Changes statut to 'livree'
+      - Sets tempsLivraison to current time
+   3. Creates notifications
+   4. Updates UI to show "Livraison terminée"
+
+C. CLIENT DATA DISPLAY FIX
+   The phone number display issue was fixed by:
+   1. Adding _clientData state variable
+   2. Fetching client data separately in _loadDeliveryDetails()
+   3. Storing client data in state (not in Order model)
+   4. Displaying phone from _clientData?['phone']
+   
+   This approach separates concerns and allows displaying client
+   information without modifying the Order model.
+
+================================================================================
+
+7. DATA MODELS
+================================================================================
+
+A. ORDER MODEL (models/order.dart)
+   
+   Properties:
+   - idCommande: Order ID
+   - idClient: Client ID
+   - idPointVente: Sales point ID
+   - idCollab: Delivery person ID
+   - idCuisinier: Cook ID
+   - statut: Order status
+   - dateCommande: Order date
+   - dateLivraison: Delivery date
+   - montantTotal: Total amount
+   - adresseLivraison: Delivery address
+   - notes: Special instructions
+   - latitude, longitude: Delivery coordinates
+   - tempsPreparationDebut: Preparation start time
+   - tempsPreparationFin: Preparation end time
+   - tempsRemiseLivreur: Handover time
+   - tempsRecuperationLivreur: Pickup time
+   - tempsLivraison: Delivery completion time
+   - items: List of cart items (optional)
+   
+   Methods:
+   - fromJson(Map<String, dynamic> json): Creates Order from JSON
+   - toJson(): Converts Order to JSON
+   
+   Usage:
+   final order = Order.fromJson(response);
+   final json = order.toJson();
+
+B. CLIENT MODEL (models/client.dart)
+   
+   Properties:
+   - idClient, nom, prenom, email, phone, password
+   - adresse, ville, codePostal
+   - favorite: Favorite customer flag
+   
+   Methods:
+   - fromJson(), toJson()
+
+C. COLLABORATOR MODEL (models/collaborator.dart)
+   
+   Properties:
+   - idCollab, nom, prenom, email, password
+   - role: User role
+   - disponible: Availability status
+   - telephone, idPointAffecte
+   
+   Methods:
+   - fromJson(), toJson()
+
+D. PRODUCT MODEL (models/product.dart)
+   
+   Properties:
+   - id/idProduit, name/nom, description
+   - price/prix, category/categorie
+   - image, available/disponible
+   
+   Methods:
+   - fromJson(), toJson()
+
+E. CART ITEM MODEL (models/cart_item.dart)
+   
+   Properties:
+   - productId: Product ID
+   - productName: Product name
+   - price: Unit price
+   - quantity: Quantity
+   - imageUrl: Product image
+   
+   Methods:
+   - getTotalPrice(): Returns price * quantity
+   - fromJson(), toJson()
+
+F. NOTIFICATION MODEL (models/notification.dart)
+   
+   Properties:
+   - idNotification, idDestinataire, idCommande
+   - type, titre, message
+   - lue: Read status
+   - createdAt: Creation timestamp
+   
+   Methods:
+   - fromJson(), toJson()
+
+================================================================================
+
+8. SERVICES
+================================================================================
+
+A. CART SERVICE (services/cart_service.dart)
+   Purpose: Manage shopping cart in memory
+   
+   Properties:
+   - _cartItems: List of CartItem objects
+   
+   Methods:
+   - addToCart(product, quantity): Adds product to cart
+   - removeFromCart(productId): Removes product from cart
+   - updateQuantity(productId, newQuantity): Updates item quantity
+   - clearCart(): Empties the cart
+   - getCartItems(): Returns list of cart items
+   - getCartTotal(): Calculates total cart value
+   - getCartItemCount(): Returns total number of items
+   
+   Logic:
+   - Cart is stored in memory (not persisted)
+   - When adding existing product, quantity is increased
+   - When quantity reaches 0, item is removed
+   - Cart is cleared after successful order
+
+B. ORDER SERVICE (services/order_service.dart)
+   Purpose: Handle order operations
+   
+   Methods:
+   - createOrder(clientId, items, address, total): Creates new order
+   - getOrdersByClient(clientId): Fetches client's orders
+   - getOrderById(orderId): Fetches single order
+   - updateOrderStatus(orderId, newStatus): Updates order status
+   - assignDeliveryPerson(orderId, livreurId): Assigns delivery person
+   - assignCook(orderId, cuisinierId): Assigns cook
+   
+   Create Order Logic:
+   1. Generate unique order ID
+   2. Insert into Commande table with:
+      - idClient, montantTotal, adresseLivraison
+      - statut = 'en_attente'
+      - dateCommande = current timestamp
+   3. Insert cart items into order items table (if exists)
+   4. Return created order
+
+C. NOTIFICATION SERVICE (services/notification_service.dart)
+   Purpose: Handle push notifications
+   
+   Methods:
+   - initializeLocalNotifications(): Sets up notification system
+   - createNotification(recipientId, orderId, type, title, message): 
+     Creates notification record
+   - showClientNotification(orderId, title, message): 
+     Shows notification to client
+   - markAsRead(notificationId): Marks notification as read
+   - getUnreadNotifications(userId): Fetches unread notifications
+   
+   Notification Types:
+   - nouvelle_commande: New order received
+   - commande_assignee: Order assigned to you
+   - statut_modifie: Order status changed
+   - urgence: Urgent notification
+   
+   Logic:
+   1. Create record in Notifications table
+   2. Use flutter_local_notifications to show system notification
+   3. Update lue field when user views notification
+
+================================================================================
+
+9. KEY WORKFLOWS
+================================================================================
+
+A. COMPLETE ORDER FLOW
+   
+   1. CLIENT PLACES ORDER:
+      - Client browses menu
+      - Adds items to cart
+      - Proceeds to checkout
+      - Enters delivery address
+      - Processes payment via Flouci
+      - Order created with status 'en_attente'
+   
+   2. COORDINATOR ASSIGNS COOK:
+      - Coordinator views pending orders
+      - Selects order and assigns available cook
+      - Order status changes to 'en_preparation'
+      - tempsPreparationDebut is set
+      - Cook receives notification
+   
+   3. COOK PREPARES ORDER:
+      - Cook views assigned orders
+      - Marks preparation as complete
+      - tempsPreparationFin is set
+      - Order ready for pickup
+   
+   4. COORDINATOR ASSIGNS DELIVERY PERSON:
+      - Coordinator assigns available delivery person
+      - tempsRemiseLivreur is set
+      - Delivery person receives notification
+   
+   5. DELIVERY PERSON PICKS UP:
+      - Delivery person views assigned deliveries
+      - Clicks "Commencer la livraison"
+      - Order status changes to 'en_cours'
+      - tempsRecuperationLivreur is set
+      - Client can track delivery in real-time
+   
+   6. DELIVERY COMPLETED:
+      - Delivery person arrives at client location
+      - Clicks "Marquer comme livrée"
+      - Order status changes to 'livree'
+      - tempsLivraison is set
+      - Client receives delivery confirmation
+
+B. REFUND REQUEST FLOW
+   
+   1. CLIENT REQUESTS REFUND:
+      - Client views order history
+      - Selects order to refund
+      - Enters refund reason
+      - Refund request created with status 'en_attente'
+   
+   2. MANAGER REVIEWS REQUEST:
+      - Manager views refund requests
+      - Reviews order details and reason
+      - Approves or rejects refund
+      - Enters refund amount (if approved)
+      - Updates status to 'approuvee' or 'refusee'
+   
+   3. CLIENT NOTIFIED:
+      - Client receives notification of decision
+      - If approved, refund is processed
+
+C. REAL-TIME LOCATION TRACKING
+   
+   1. DELIVERY PERSON STARTS DELIVERY:
+      - Location services activated
+      - GPS coordinates captured every N seconds
+      - Location updates stored in Locations table
+   
+   2. CLIENT TRACKS DELIVERY:
+      - Client opens order tracking page
+      - Google Maps displays delivery person location
+      - Location updates in real-time via Supabase subscriptions
+      - Estimated arrival time calculated
+
+================================================================================
+
+10. UI/UX FIXES IMPLEMENTED
+================================================================================
+
+A. COORDINATOR DETAILS PAGE
+   Problem: Clicking "Détails" on orders showed nothing
+   Solution:
+   - Created CommandDetailsPage component
+   - Enabled navigation from Dashboard and ManageCommandsPage
+   - Added comprehensive order details display
+   - Included assignment actions
+
+B. DELIVERY PHONE NUMBER DISPLAY
+   Problem: Phone number showed "Non disponible"
+   Solution:
+   - Added _clientData state variable
+   - Fetched client data separately from order
+   - Displayed phone from client data
+   - Fixed data mapping issue
+
+C. OVERFLOW FIXES
+   Problem: "Overflowed by X pixels" errors
+   Solutions:
+   - Wrapped long text in Expanded widgets
+   - Added overflow: TextOverflow.ellipsis
+   - Used SingleChildScrollView for scrollable content
+   - Added proper spacing with SizedBox
+
+================================================================================
+
+11. COMMON QUESTIONS & ANSWERS
+================================================================================
+
+Q: How does the authentication system work?
+A: The system uses dual authentication:
+   - Clients: Phone + password (direct database query)
+   - Collaborators: Email + password (Supabase Auth + database)
+   User data is stored in SharedPreferences for persistence.
+
+Q: What happens when an order is created?
+A: Order creation involves:
+   1. Validate cart and delivery address
+   2. Process payment via Flouci
+   3. Insert order into Commande table with status 'en_attente'
+   4. Clear shopping cart
+   5. Navigate to order tracking page
+
+Q: How are orders assigned to delivery persons?
+A: Assignment process:
+   1. Coordinator views pending orders
+   2. System shows available delivery persons (disponible=true)
+   3. Coordinator selects delivery person
+   4. System updates order with idCollab
+   5. Creates notification for delivery person
+   6. Updates order status
+
+Q: How does real-time tracking work?
+A: Tracking mechanism:
+   1. Delivery person's location is captured via GPS
+   2. Location updates stored in Locations table
+   3. Client subscribes to location updates via Supabase
+   4. Google Maps displays delivery person position
+   5. Updates occur in real-time
+
+Q: What are the different order statuses?
+A: Order statuses:
+   - en_attente: Order received, waiting for assignment
+   - en_preparation: Cook is preparing the order
+   - en_cours: Delivery person is delivering
+   - livree: Order delivered successfully
+   - annulee: Order cancelled
+
+Q: How are notifications handled?
+A: Notification system:
+   1. Events trigger notification creation
+   2. Record inserted into Notifications table
+   3. flutter_local_notifications shows system notification
+   4. User can view notifications in app
+   5. Notifications marked as read when viewed
+
+Q: What payment methods are supported?
+A: Currently supports:
+   - Flouci payment gateway
+   - Integration in PaymentPage component
+   - Payment processed before order creation
+
+Q: How is the cart managed?
+A: Cart management:
+   - Stored in memory via CartService
+   - Not persisted to database
+   - Cleared after successful order
+   - Supports add, remove, update quantity operations
+
+Q: What roles exist in the system?
+A: User roles:
+   - client: Customer who orders food
+   - gerant: Manager with full access
+   - coordinateur: Coordinates orders and assignments
+   - livreur: Delivers orders
+   - cuisinier: Prepares food
+   - chef: Kitchen supervisor
+
+Q: How do you add a new product?
+A: Product addition:
+   1. Manager navigates to product management
+   2. Clicks "Add Product" button
+   3. Enters product details (name, price, category, image)
+   4. Saves to Produit/products table
+   5. Product appears in client menu
+
+================================================================================
+
+12. TROUBLESHOOTING GUIDE
+================================================================================
+
+ISSUE: Login fails with correct credentials
+SOLUTION:
+- Check Supabase connection
+- Verify table names (Client vs client)
+- Ensure password matches exactly (case-sensitive)
+- Check network connectivity
+
+ISSUE: Orders not appearing
+SOLUTION:
+- Verify Commande table has data
+- Check foreign key relationships
+- Ensure proper joins in queries
+- Verify user has correct permissions
+
+ISSUE: Notifications not showing
+SOLUTION:
+- Check notification permissions
+- Verify flutter_local_notifications initialization
+- Ensure Notifications table is populated
+- Check notification service implementation
+
+ISSUE: Map not displaying delivery location
+SOLUTION:
+- Verify Google Maps API key
+- Check location permissions
+- Ensure Locations table has recent data
+- Verify GPS coordinates are valid
+
+ISSUE: Payment processing fails
+SOLUTION:
+- Check Flouci API credentials
+- Verify payment amount is valid
+- Ensure network connectivity
+- Check Flouci service status
+
+================================================================================
+
+13. DEPLOYMENT NOTES
+================================================================================
+
+ENVIRONMENT SETUP:
+1. Install Flutter SDK
+2. Set up Supabase project
+3. Configure Supabase URL and anon key in main.dart
+4. Set up Google Maps API key
+5. Configure Flouci payment credentials
+
+DATABASE SETUP:
+1. Create all required tables in Supabase
+2. Set up foreign key relationships
+3. Create indexes on frequently queried columns
+4. Insert sample data for testing
+
+SECURITY CONSIDERATIONS:
+1. Hash passwords before storing (currently plain text)
+2. Implement proper authentication tokens
+3. Set up Row Level Security (RLS) in Supabase
+4. Validate all user inputs
+5. Sanitize database queries
+
+TESTING:
+1. Test all user flows (client, gerant, coordinator, livreur)
+2. Verify payment processing
+3. Test real-time location tracking
+4. Verify notifications work correctly
+5. Test on multiple devices
+
+PRODUCTION DEPLOYMENT:
+1. Update Supabase URL to production
+2. Enable password hashing
+3. Configure production payment gateway
+4. Set up proper error logging
+5. Enable analytics
+
+================================================================================
+
+END OF DOCUMENTATION
+================================================================================
+
+For additional questions or clarifications, refer to:
+- DATABASE_SCHEMA.md for database structure
+- Individual code files for implementation details
+- Supabase documentation for backend features
+- Flutter documentation for UI components
+
+Last Updated: December 2025
+Version: 1.0

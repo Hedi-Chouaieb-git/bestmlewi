@@ -9,7 +9,7 @@ import '../../services/order_service.dart';
 import '../../services/notification_service.dart';
 import '../../models/order.dart';
 import '../../models/collaborator.dart';
-//import 'command_details_page.dart';
+import 'Cordinateur/command_details_page.dart';
 
 class ManageCommandsPage extends StatefulWidget {
   final String coordinatorId;
@@ -492,7 +492,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
       ),
       child: InkWell(
         onTap: () {
-         /* Navigator.push(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CommandDetailsPage(
@@ -500,7 +500,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
                 coordinatorId: widget.coordinatorId,
               ),
             ),
-          ).then((_) => loadCommands());*/
+          ).then((_) => loadCommands());
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
@@ -744,7 +744,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
                     ),
                   TextButton(
                     onPressed: () {
-                     /* Navigator.push(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => CommandDetailsPage(
@@ -752,7 +752,7 @@ class _ManageCommandsPageState extends State<ManageCommandsPage> {
                             coordinatorId: widget.coordinatorId,
                           ),
                         ),
-                      ).then((_) => loadCommands());*/
+                      ).then((_) => loadCommands());
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFFF6B35),

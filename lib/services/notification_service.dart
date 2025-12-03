@@ -159,8 +159,11 @@ class NotificationService {
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
+    // Use a smaller ID to avoid 32-bit integer overflow
+    final notificationId = DateTime.now().millisecondsSinceEpoch % 1000000;
+
     await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch,
+      notificationId,
       title,
       message,
       platformChannelSpecifics,

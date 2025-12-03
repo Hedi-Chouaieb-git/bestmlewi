@@ -20,6 +20,7 @@ class DeliveryDetailsPage extends StatefulWidget {
 class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
   final supabase = Supabase.instance.client;
   Order? _order;
+  Map<String, dynamic>? _clientData;
   bool _isLoading = true;
   bool _isUpdatingStatus = false;
 
@@ -46,9 +47,9 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
               .select('idClient, nom, prenom, phone, adresse')
               .eq('idClient', response['idClient'])
               .single();
-          response['Client'] = clientData;
+          _clientData = clientData;
         } catch (e) {
-          response['Client'] = null;
+          _clientData = null;
         }
       }
 
@@ -232,14 +233,18 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Commande #${_order!.idCommande}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Commande #${_order!.idCommande}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               _buildStatusBadge(_order!.statut),
             ],
           ),
@@ -326,7 +331,7 @@ class _DeliveryDetailsPageState extends State<DeliveryDetailsPage> {
           const SizedBox(height: 12),
           _buildInfoRow(Icons.person, 'Client ID: ${_order!.idClient}'),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.phone, 'Téléphone: Non disponible'),
+          _buildInfoRow(Icons.phone, 'Téléphone: ${_clientData?['phone'] ?? 'Non disponible'}'),
           const SizedBox(height: 8),
           _buildInfoRow(Icons.location_on, 'Adresse: ${_order!.adresseLivraison}'),
         ],

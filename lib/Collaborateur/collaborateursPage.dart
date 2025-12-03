@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'manage_commands_page.dart';
+import 'Cordinateur/command_details_page.dart';
 //import 'view_menu_page.dart';
 import 'coordinator_profile_page.dart';
 import 'package:intl/intl.dart';
@@ -496,60 +497,77 @@ class _CoordinatorDashboardState extends State<CoordinatorDashboard> {
         statusLabel = statut;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Commande #${command['idCommande']}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CommandDetailsPage(
+              commandId: command['idCommande'],
+              coordinatorId: widget.coordinatorId,
+            ),
+          ),
+        ).then((_) => loadDashboardData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Commande #${command['idCommande']}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (client != null)
+              Text(
+                'Client: ${client['nom']}',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (client != null)
+            if (collaborateur != null)
+              Text(
+                'Livreur: ${collaborateur['prenom'] ?? ''} ${collaborateur['nom'] ?? ''}',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
             Text(
-              'Client: ${client['nom']}',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              date,
+              style: const TextStyle(color: Colors.white60, fontSize: 12),
             ),
-          if (collaborateur != null)
-            Text(
-              'Livreur: ${collaborateur['prenom'] ?? ''} ${collaborateur['nom'] ?? ''}',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-          Text(
-            date,
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:ui';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'package:supabase_app/Routes/app_routes.dart';
 import 'package:supabase_app/services/auth_service.dart';
@@ -23,24 +26,69 @@ class _ClientHomePageState extends State<ClientHomePage> {
   String _customerName = 'TopMlawi Lover';
   String _favoriteCategory = 'Mlawi';
   Map<String, String> _lastOrderStatuses = {}; // orderId -> status
-  Timer? _statusCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _initializeForegroundTask();
     _startOrderStatusMonitoring();
   }
 
   @override
   void dispose() {
-    _statusCheckTimer?.cancel();
+    FlutterForegroundTask.stopService();
     super.dispose();
   }
 
+  void _initializeForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'foreground_service',
+        channelName: 'Order Monitoring Service',
+        channelDescription: 'Monitors order status changes',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+        iconData: const NotificationIconData(
+          resType: ResourceType.mipmap,
+          resPrefix: ResourcePrefix.ic,
+          name: 'launcher',
+        ),
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(),
+      foregroundTaskOptions: const ForegroundTaskOptions(
+        interval: 30000, // Check every 30 seconds
+        isOnceEvent: false,
+        autoRunOnBoot: true,
+        allowWakeLock: true,
+        allowWifiLock: false,
+      ),
+    );
+  }
+
+  Future<void> _startForegroundService() async {
+    if (await FlutterForegroundTask.isRunningService) {
+      return;
+    }
+
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'BestMlewi Active',
+      notificationText: 'Monitoring your orders...',
+      callback: _startForegroundTaskCallback,
+    );
+  }
+
+  @pragma('vm:entry-point')
+  static void _startForegroundTaskCallback() {
+    FlutterForegroundTask.setTaskHandler(FirstTaskHandler());
+  }
+
   void _startOrderStatusMonitoring() {
-    // Check order statuses every 10 seconds
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    // Start foreground service for background monitoring
+    _startForegroundService();
+
+    // Also run foreground check every 15 seconds as backup
+    Timer.periodic(const Duration(seconds: 15), (timer) {
       _checkOrderStatusChanges();
     });
   }
@@ -381,4 +429,86 @@ class _RecommendationItem {
   final String title;
   final String image;
   final double price;
+}
+
+class FirstTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
+    print('Foreground task started at $timestamp');
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {
+    // This method is called every 30 seconds as defined in the options
+    print('Foreground task checking orders at $timestamp');
+    _checkOrdersInBackground();
+  }
+
+  @override
+  void onDestroy(DateTime timestamp, SendPort? sendPort) {
+    print('Foreground task destroyed at $timestamp');
+  }
+
+  static Future<void> _checkOrdersInBackground() async {
+    try {
+      // Initialize Supabase for background task
+      await Supabase.initialize(
+        url: 'https://qxajdhjecopmgvbtbkpu.supabase.co/',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4YWpkaGplY29wbWd2YnRia3B1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5NzMxMTYsImV4cCI6MjA3OTU0OTExNn0.CB06Fr7jcQPAFctPG7chV9yeF6B2GQldgFyqcrdq7Bc',
+      );
+
+      final supabase = Supabase.instance.client;
+
+      // Get recent orders
+      final response = await supabase
+          .from('Commande')
+          .select('idCommande, statut, idClient')
+          .order('dateCommande', ascending: false)
+          .limit(10);
+
+      final orders = List<Map<String, dynamic>>.from(response);
+
+      // Check for status changes and send notifications
+      for (final order in orders) {
+        final orderId = order['idCommande'] as String;
+        final currentStatus = order['statut'] as String;
+
+        // For background tasks, we send notifications directly since we can't maintain state
+        String notificationTitle = '';
+        String notificationMessage = '';
+
+        switch (currentStatus) {
+          case 'en_preparation':
+            notificationTitle = 'Commande en préparation';
+            notificationMessage = 'Votre commande #$orderId est maintenant en cours de préparation.';
+            break;
+          case 'en_cours':
+            notificationTitle = 'Commande en livraison';
+            notificationMessage = 'Votre commande #$orderId est en cours de livraison.';
+            break;
+          case 'livree':
+            notificationTitle = 'Commande livrée';
+            notificationMessage = 'Votre commande #$orderId a été livrée avec succès !';
+            break;
+          case 'annulee':
+            notificationTitle = 'Commande annulée';
+            notificationMessage = 'Votre commande #$orderId a été annulée.';
+            break;
+        }
+
+        if (notificationTitle.isNotEmpty) {
+          // Send notification (this will work in background)
+          final notificationService = NotificationService();
+          await notificationService.initializeLocalNotifications();
+          await notificationService.showClientNotification(
+            orderId: orderId,
+            title: notificationTitle,
+            message: notificationMessage,
+          );
+        }
+      }
+    } catch (e) {
+      print('Background order check error: $e');
+    }
+  }
 }

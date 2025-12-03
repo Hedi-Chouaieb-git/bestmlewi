@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'services/notification_service.dart';
 import 'Routes/app_routes.dart';
 
